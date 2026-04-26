@@ -19,7 +19,7 @@ function App() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [attachments, setAttachments] = useState([])
   const audioRef = useRef(null)
-
+  const API_URL = "https://aichatbotsite.onrender.com";
   const activeSession = useMemo(() => {
     return sessions.find((session) => session.id === activeSessionId) || sessions[0]
   }, [activeSessionId, sessions])
@@ -63,7 +63,7 @@ function App() {
     setIsSending(true)
 
     try {
-      const response = await fetch('/api/chat', {
+      const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: nextMessages }),
@@ -202,7 +202,7 @@ function App() {
     setIsSpeaking(true)
 
     try {
-      const response = await fetch('/api/voice', {
+      const response = await fetch(`${API_URL}/api/voice`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text }),

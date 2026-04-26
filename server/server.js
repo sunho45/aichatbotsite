@@ -1,17 +1,23 @@
-const http = require("http");
 const fs = require("fs");
 const path = require("path");
 const { Readable } = require("stream");
-require("dotenv").config({ quiet: true });
+require("dotenv").config({ path: path.resolve(__dirname, ".env"), quiet: true });
+const express = require("express");
+const cors = require("cors");
 
+// Runtime configuration is read from server/.env, with conservative defaults for
+// local development and API provider fallbacks where the older XAI names exist.
 const PORT = Number(process.env.PORT || 3000);
+const MAX_UPLOAD_SIZE = process.env.MAX_UPLOAD_SIZE || "50mb";
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || process.env.XAI_API_KEY;
 const OPENROUTER_MODEL =
   process.env.OPENROUTER_MODEL || process.env.XAI_MODEL || "x-ai/grok-4.20";
 const OPENROUTER_BASE_URL =
   process.env.OPENROUTER_BASE_URL || "https://openrouter.ai/api/v1";
 const OPENROUTER_SITE_URL =
-  process.env.OPENROUTER_SITE_URL || process.env.CLIENT_ORIGIN || "http://192.168.219.120:5173";
+  process.env.OPENROUTER_SITE_URL ||
+  process.env.CLIENT_ORIGIN ||
+  "https://aichatbotsite.onrender.com";
 const OPENROUTER_APP_NAME = process.env.OPENROUTER_APP_NAME || "My AI Website";
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
 const ELEVENLABS_BASE_URL =
@@ -26,74 +32,54 @@ const SYSTEM_PROMPT =
 const PERSONA_FILE = process.env.PERSONA_FILE || "persona.type.yaml";
 
 const clientDist = path.resolve(__dirname, "..", "client", "vite_project", "dist");
-const contentTypes = {
-  ".html": "text/html; charset=utf-8",
-  ".css": "text/css; charset=utf-8",
-  ".js": "application/javascript; charset=utf-8",
-  ".json": "application/json; charset=utf-8",
-  ".png": "image/png",
-  ".jpg": "image/jpeg",
-  ".jpeg": "image/jpeg",
-  ".svg": "image/svg+xml",
-  ".ico": "image/x-icon",
-};
+const app = express();
 
-const server = http.createServer(async (req, res) => {
-  try {
-    setCorsHeaders(res);
+// Shared middleware accepts browser requests and larger JSON bodies for chat
+// payloads that may include multimodal message content.
+app.use(cors());
+app.use(express.json({ limit: MAX_UPLOAD_SIZE }));
+app.use(express.urlencoded({ extended: true, limit: MAX_UPLOAD_SIZE }));
 
-    if (req.method === "OPTIONS") {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
+// API endpoints are wrapped so async exceptions flow into the Express error
+// handler instead of leaving requests hanging.
+app.post("/api/chat", handleAsync(handleChat));
+app.post("/api/voice", handleAsync(handleVoice));
 
-    const url = new URL(req.url, `http://${req.headers.host}`);
+// Serve the compiled React app after API routes. HTML is not cached so users get
+// the latest build, while static assets can be cached briefly.
+app.use(
+  express.static(clientDist, {
+    setHeaders(res, filePath) {
+      if (path.extname(filePath).toLowerCase() === ".html") {
+        res.setHeader("Cache-Control", "no-store");
+        return;
+      }
 
-    if (req.method === "POST" && url.pathname === "/api/chat") {
-      await handleChat(req, res);
-      return;
-    }
+      res.setHeader("Cache-Control", "public, max-age=3600");
+    },
+  })
+);
 
-    if (req.method === "POST" && url.pathname === "/api/voice") {
-      await handleVoice(req, res);
-      return;
-    }
+app.get("*", serveReactApp);
+app.use(handleNotFound);
+app.use(handleError);
 
-    if (req.method !== "GET" && req.method !== "HEAD") {
-      sendJson(res, 405, { error: "Method not allowed" });
-      return;
-    }
-
-    serveReactApp(url.pathname, res, req.method === "HEAD");
-  } catch (error) {
-    console.error(error);
-    sendJson(res, 500, { error: "Server error" });
-  }
-});
-
-server.listen(PORT, () => {
-  console.log(`API server running at http://192.168.219.120:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`API server running at https://aichatbotsite.onrender.com`);
 });
 
 async function handleChat(req, res) {
   if (!OPENROUTER_API_KEY) {
-    sendJson(res, 500, {
+    res.status(500).json({
       error:
         "Missing OPENROUTER_API_KEY. Add it to server/.env, then restart the server.",
     });
     return;
   }
 
-  let body;
-  try {
-    body = await readJson(req);
-  } catch {
-    sendJson(res, 400, { error: "Invalid JSON body" });
-    return;
-  }
-
-  const incomingMessages = Array.isArray(body.messages) ? body.messages : [];
+  // Keep only recent user/assistant turns with valid content before forwarding
+  // the conversation to the model provider.
+  const incomingMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
   const messages = incomingMessages
     .filter((message) => {
       return (
@@ -109,7 +95,7 @@ async function handleChat(req, res) {
     }));
 
   if (!messages.length || messages[messages.length - 1].role !== "user") {
-    sendJson(res, 400, { error: "Send at least one user message." });
+    res.status(400).json({ error: "Send at least one user message." });
     return;
   }
 
@@ -131,7 +117,7 @@ async function handleChat(req, res) {
     });
   } catch (error) {
     console.error(error);
-    sendJson(res, 502, {
+    res.status(502).json({
       error: "Could not connect to OpenRouter. Check network access and server logs.",
     });
     return;
@@ -144,17 +130,17 @@ async function handleChat(req, res) {
       data.error?.message ||
       data.message ||
       `OpenRouter request failed with ${response.status}`;
-    sendJson(res, response.status, { error: apiMessage });
+    res.status(response.status).json({ error: apiMessage });
     return;
   }
 
   const reply = data.choices?.[0]?.message?.content;
   if (!reply) {
-    sendJson(res, 502, { error: "OpenRouter returned an empty response." });
+    res.status(502).json({ error: "OpenRouter returned an empty response." });
     return;
   }
 
-  sendJson(res, 200, {
+  res.status(200).json({
     reply,
     model: data.model || OPENROUTER_MODEL,
     usage: data.usage || null,
@@ -163,24 +149,18 @@ async function handleChat(req, res) {
 
 async function handleVoice(req, res) {
   if (!ELEVENLABS_API_KEY) {
-    sendJson(res, 500, {
+    res.status(500).json({
       error:
         "Missing ELEVENLABS_API_KEY. Add it to server/.env, then restart the server.",
     });
     return;
   }
 
-  let body;
-  try {
-    body = await readJson(req);
-  } catch {
-    sendJson(res, 400, { error: "Invalid JSON body" });
-    return;
-  }
-
-  const text = typeof body.text === "string" ? body.text.trim() : "";
+  // ElevenLabs receives bounded text so very large client input cannot create an
+  // oversized text-to-speech request.
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "";
   if (!text) {
-    sendJson(res, 400, { error: "Text is required." });
+    res.status(400).json({ error: "Text is required." });
     return;
   }
 
@@ -205,7 +185,7 @@ async function handleVoice(req, res) {
   });
 
   if (!response) {
-    sendJson(res, 502, {
+    res.status(502).json({
       error: "Could not connect to ElevenLabs. Check network access and server logs.",
     });
     return;
@@ -213,89 +193,63 @@ async function handleVoice(req, res) {
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
-    sendJson(res, response.status, {
+    res.status(response.status).json({
       error: details || `ElevenLabs request failed with ${response.status}`,
     });
     return;
   }
 
-  setCorsHeaders(res);
-  res.writeHead(200, {
-    "Content-Type": response.headers.get("content-type") || "audio/mpeg",
-    "Cache-Control": "no-store",
-  });
+  res.status(200);
+  res.setHeader("Content-Type", response.headers.get("content-type") || "audio/mpeg");
+  res.setHeader("Cache-Control", "no-store");
   Readable.fromWeb(response.body).pipe(res);
 }
 
-function serveReactApp(requestPath, res, headOnly) {
-  const safePath = requestPath === "/" ? "/index.html" : decodeURIComponent(requestPath);
-  const requestedFile = path.normalize(path.join(clientDist, safePath));
+function serveReactApp(req, res) {
+  const indexPath = path.join(clientDist, "index.html");
 
-  if (!requestedFile.startsWith(clientDist)) {
-    sendJson(res, 403, { error: "Forbidden" });
+  if (!fs.existsSync(indexPath)) {
+    res.status(404).json({
+      error: "React build not found. Run npm run build in client/vite_project.",
+    });
     return;
   }
 
-  fs.readFile(requestedFile, (error, content) => {
-    if (error) {
-      fs.readFile(path.join(clientDist, "index.html"), (fallbackError, fallback) => {
-        if (fallbackError) {
-          sendJson(res, 404, {
-            error: "React build not found. Run npm run build in client/vite_project.",
-          });
-          return;
-        }
-        res.writeHead(200, { "Content-Type": contentTypes[".html"] });
-        if (!headOnly) res.end(fallback);
-        else res.end();
-      });
-      return;
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(indexPath);
+}
+
+function handleAsync(handler) {
+  return async (req, res, next) => {
+    try {
+      await handler(req, res);
+    } catch (error) {
+      next(error);
     }
-
-    const ext = path.extname(requestedFile).toLowerCase();
-    res.writeHead(200, {
-      "Content-Type": contentTypes[ext] || "application/octet-stream",
-      "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=3600",
-    });
-    if (!headOnly) res.end(content);
-    else res.end();
-  });
+  };
 }
 
-function readJson(req) {
-  return new Promise((resolve, reject) => {
-    let raw = "";
-
-    req.on("data", (chunk) => {
-      raw += chunk;
-      if (raw.length > 1_000_000) {
-        req.destroy();
-        reject(new Error("Request body too large"));
-      }
-    });
-
-    req.on("end", () => {
-      try {
-        resolve(JSON.parse(raw || "{}"));
-      } catch (error) {
-        reject(error);
-      }
-    });
-
-    req.on("error", reject);
-  });
+function handleNotFound(req, res) {
+  res.status(404).json({ error: "Not found" });
 }
 
-function sendJson(res, status, payload) {
-  setCorsHeaders(res);
-  res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
-  res.end(JSON.stringify(payload));
-}
+function handleError(error, req, res, next) {
+  console.error(error);
 
-function setCorsHeaders(res) {
-  res.setHeader("Access-Control-Allow-Origin", process.env.CLIENT_ORIGIN || "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type,Authorization");
+  if (error.type === "entity.too.large") {
+    res.status(413).json({
+      error: `Upload is too large. Maximum request size is ${MAX_UPLOAD_SIZE}.`,
+    });
+    return;
+  }
+
+  if (error instanceof SyntaxError && "body" in error) {
+    res.status(400).json({ error: "Invalid JSON body" });
+    return;
+  }
+
+  res.status(500).json({ error: "Server error" });
+
 }
 
 function buildSystemPrompt() {
@@ -304,6 +258,8 @@ function buildSystemPrompt() {
 
   if (!persona) return SYSTEM_PROMPT;
 
+  // Persona fields are appended to the base system prompt when the optional
+  // persona.type.yaml file is present.
   return [
     SYSTEM_PROMPT,
     "Persona configuration:",
@@ -321,6 +277,8 @@ function buildSystemPrompt() {
 function readPersonaFile(filePath) {
   if (!fs.existsSync(filePath)) return null;
 
+  // This intentionally supports the small YAML subset used by persona.type.yaml:
+  // simple key/value pairs plus literal blocks written with "key: |".
   const raw = fs.readFileSync(filePath, "utf8");
   const result = {};
   let currentKey = "";

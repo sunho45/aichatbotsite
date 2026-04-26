@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>JavaScript 문법 가이드</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #20242a;
+      --muted: #5f6875;
+      --border: #d8dde5;
+      --accent: #1463ff;
+      --accent-soft: #eaf1ff;
+      --code: #111827;
+      --warning: #925400;
+      --warning-soft: #fff8e6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 32px 24px;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0 auto 8px;
+      font-size: 32px;
+    }
+
+    header p {
+      max-width: 980px;
+      margin: 0 auto;
+      color: var(--muted);
+    }
+
+    nav {
+      max-width: 980px;
+      margin: 18px auto 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #c8dafd;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    section {
+      margin: 0 0 18px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 8px 0 12px;
+    }
+
+    ul {
+      margin: 8px 0 12px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      color: var(--code);
+      background: #eef1f5;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 10px 0 14px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #111827;
+      color: #f9fafb;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 14px;
+    }
+
+    pre code {
+      color: inherit;
+      background: transparent;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f3f7;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 12px 14px;
+      border-radius: 6px;
+    }
+
+    .warning {
+      border-left: 4px solid var(--warning);
+      background: var(--warning-soft);
+      padding: 12px 14px;
+      border-radius: 6px;
+    }
+
+    @media (max-width: 700px) {
+      header,
+      main {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      section {
+        padding: 16px;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      th {
+        display: none;
+      }
+
+      td {
+        border-bottom: 0;
+        padding: 8px 10px;
+      }
+
+      tr {
+        border-bottom: 1px solid var(--border);
+        padding: 6px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>JavaScript 문법 가이드</h1>
+    <p>서버와 프론트엔드 코드를 읽고 수정할 때 자주 만나는 JavaScript 문법을 정리했습니다.</p>
+    <nav aria-label="guide links">
+      <a href="git.html">Git 가이드</a>
+      <a href="javascript.html">JavaScript 문법 가이드</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>변수 선언</h2>
+      <p><code>const</code>는 다시 할당하지 않는 값, <code>let</code>은 다시 할당할 수 있는 값에 사용합니다. <code>var</code>는 오래된 방식이라 새 코드에서는 피하는 편이 좋습니다.</p>
+      <pre><code>const port = 3000;
+let count = 0;
+
+count = count + 1;</code></pre>
+    </section>
+
+    <section>
+      <h2>자료형</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>자료형</th>
+            <th>예시</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>문자열</td>
+            <td><code>"hello"</code>, <code>'hello'</code>, <code>`hello ${name}`</code></td>
+          </tr>
+          <tr>
+            <td>숫자</td>
+            <td><code>10</code>, <code>3.14</code></td>
+          </tr>
+          <tr>
+            <td>불리언</td>
+            <td><code>true</code>, <code>false</code></td>
+          </tr>
+          <tr>
+            <td>배열</td>
+            <td><code>["user", "assistant"]</code></td>
+          </tr>
+          <tr>
+            <td>객체</td>
+            <td><code>{ name: "server", port: 3000 }</code></td>
+          </tr>
+          <tr>
+            <td>null / undefined</td>
+            <td>값이 비어 있거나 아직 정해지지 않은 상태</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>함수</h2>
+      <p>일반 함수와 화살표 함수는 모두 자주 사용됩니다.</p>
+      <pre><code>function add(a, b) {
+  return a + b;
+}
+
+const multiply = (a, b) => {
+  return a * b;
+};</code></pre>
+      <p class="note">Express route handler처럼 이름이 있는 함수는 에러 추적과 재사용에 유리합니다.</p>
+    </section>
+
+    <section>
+      <h2>조건문</h2>
+      <p><code>if</code>, <code>else if</code>, <code>else</code>로 조건에 따라 다른 코드를 실행합니다.</p>
+      <pre><code>if (!apiKey) {
+  res.status(500).json({ error: "Missing API key" });
+} else {
+  startServer();
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>배열 메서드</h2>
+      <p>배열 데이터를 다룰 때 <code>filter</code>, <code>map</code>, <code>slice</code>, <code>some</code>을 많이 사용합니다.</p>
+      <pre><code>const messages = incomingMessages
+  .filter((message) => message.role === "user")
+  .slice(-20)
+  .map((message) => ({
+    role: message.role,
+    content: message.content.trim(),
+  }));</code></pre>
+      <ul>
+        <li><code>filter</code>: 조건에 맞는 항목만 남깁니다.</li>
+        <li><code>map</code>: 각 항목을 다른 형태로 바꿉니다.</li>
+        <li><code>slice</code>: 배열의 일부를 복사합니다.</li>
+        <li><code>some</code>: 조건을 만족하는 항목이 하나라도 있는지 확인합니다.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>객체와 구조 분해</h2>
+      <p>객체는 이름이 있는 값 묶음입니다. 필요한 값만 꺼낼 때 구조 분해를 사용할 수 있습니다.</p>
+      <pre><code>const user = {
+  name: "Sky",
+  role: "admin",
+};
+
+const { name, role } = user;</code></pre>
+    </section>
+
+    <section>
+      <h2>옵셔널 체이닝과 기본값</h2>
+      <p><code>?.</code>는 중간 값이 없을 때 에러 대신 <code>undefined</code>를 반환합니다. <code>||</code>는 기본값을 지정할 때 자주 사용합니다.</p>
+      <pre><code>const apiKey = process.env.OPENROUTER_API_KEY || process.env.XAI_API_KEY;
+const reply = data.choices?.[0]?.message?.content;</code></pre>
+      <p class="warning"><code>||</code>는 빈 문자열도 false로 처리합니다. 빈 문자열을 유효한 값으로 봐야 한다면 <code>??</code>를 고려하세요.</p>
+    </section>
+
+    <section>
+      <h2>비동기 코드</h2>
+      <p>API 호출, 파일 읽기, 네트워크 요청은 시간이 걸릴 수 있으므로 <code>async</code>와 <code>await</code>를 사용합니다.</p>
+      <pre><code>async function handleChat(req, res) {
+  const response = await fetch("https://example.com/api", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message: "hello" }),
+  });
+
+  const data = await response.json();
+  res.json(data);
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>try / catch</h2>
+      <p>실패할 수 있는 코드는 <code>try / catch</code>로 감싸서 서버가 갑자기 종료되지 않도록 처리합니다.</p>
+      <pre><code>try {
+  const data = await response.json();
+  res.json(data);
+} catch (error) {
+  console.error(error);
+  res.status(500).json({ error: "Server error" });
+}</code></pre>
+    </section>
+
+    <section>
+      <h2>CommonJS 모듈</h2>
+      <p>현재 서버는 <code>type: "commonjs"</code> 방식입니다. 그래서 <code>require</code>로 모듈을 불러옵니다.</p>
+      <pre><code>const express = require("express");
+const cors = require("cors");
+
+const app = express();</code></pre>
+    </section>
+
+    <section>
+      <h2>Express 기본 구조</h2>
+      <p>Express 서버는 middleware, route, error handler 순서로 읽으면 이해하기 쉽습니다.</p>
+      <pre><code>app.use(cors());
+app.use(express.json());
+
+app.post("/api/chat", handleChat);
+
+app.use((error, req, res, next) => {
+  console.error(error);
+  res.status(500).json({ error: "Server error" });
+});</code></pre>
+      <p class="note">위에서 아래로 실행되므로 middleware와 route 순서가 중요합니다.</p>
+    </section>
+  </main>
+</body>
+</html>

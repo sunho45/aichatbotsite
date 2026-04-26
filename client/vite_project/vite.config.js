@@ -5,10 +5,10 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '192.168.219.120',
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
-      '/api': 'http://192.168.219.120:3000',
+      '/api': 'https://aichatbotsite.onrender.com',
     },
   },
 })

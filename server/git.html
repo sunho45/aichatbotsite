@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Git 명령어와 작업 흐름 가이드</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #20242a;
+      --muted: #5f6875;
+      --border: #d8dde5;
+      --accent: #1463ff;
+      --accent-soft: #eaf1ff;
+      --danger: #b42318;
+      --danger-soft: #fff1f0;
+      --code: #111827;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 32px 24px;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0 auto 8px;
+      font-size: 32px;
+    }
+
+    header p {
+      max-width: 980px;
+      margin: 0 auto;
+      color: var(--muted);
+    }
+
+    nav {
+      max-width: 980px;
+      margin: 18px auto 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #c8dafd;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    section {
+      margin: 0 0 18px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 8px 0 12px;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0 12px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      color: var(--code);
+      background: #eef1f5;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 0.95em;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 10px 0 14px;
+      padding: 14px;
+      border-radius: 8px;
+      background: #111827;
+      color: #f9fafb;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 14px;
+    }
+
+    pre code {
+      color: inherit;
+      background: transparent;
+      padding: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th,
+    td {
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f3f7;
+    }
+
+    tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .note {
+      border-left: 4px solid var(--accent);
+      background: var(--accent-soft);
+      padding: 12px 14px;
+      border-radius: 6px;
+    }
+
+    .danger {
+      border-left: 4px solid var(--danger);
+      background: var(--danger-soft);
+      padding: 12px 14px;
+      border-radius: 6px;
+    }
+
+    @media (max-width: 700px) {
+      header,
+      main {
+        padding-left: 16px;
+        padding-right: 16px;
+      }
+
+      h1 {
+        font-size: 26px;
+      }
+
+      section {
+        padding: 16px;
+      }
+
+      table,
+      thead,
+      tbody,
+      th,
+      td,
+      tr {
+        display: block;
+      }
+
+      th {
+        display: none;
+      }
+
+      td {
+        border-bottom: 0;
+        padding: 8px 10px;
+      }
+
+      tr {
+        border-bottom: 1px solid var(--border);
+        padding: 6px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Git 명령어와 작업 흐름 가이드</h1>
+    <p>이 프로젝트에서 로컬 수정 사항과 비밀 환경 파일을 잃지 않기 위한 실전 Git 사용법입니다.</p>
+    <nav aria-label="guide links">
+      <a href="git.html">Git 가이드</a>
+      <a href="javascript.html">JavaScript 문법 가이드</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>명령어를 실행하는 위치</h2>
+      <p>Git 명령어는 프로젝트 루트 폴더에서 실행하는 것이 가장 안전합니다.</p>
+      <pre><code>cd C:\Users\skyee\Documents\my_aiwebsite</code></pre>
+      <p class="note"><code>server</code> 폴더는 같은 저장소 안에 있습니다. 보통 <code>server</code> 안에서 따로 Git을 실행할 필요는 없습니다.</p>
+    </section>
+
+    <section>
+      <h2>기본 작업 흐름</h2>
+      <ol>
+        <li>무엇이 바뀌었는지 확인합니다.</li>
+        <li>실제 코드 차이를 검토합니다.</li>
+        <li>저장하고 싶은 파일만 stage 합니다.</li>
+        <li>명확한 메시지로 commit 합니다.</li>
+        <li>원격 저장소에 올릴 준비가 되었을 때 push 합니다.</li>
+      </ol>
+      <pre><code>git status
+git diff
+git add server/server.js server/package.json server/package-lock.json
+git commit -m "Refactor server to use express"
+git push</code></pre>
+    </section>
+
+    <section>
+      <h2>자주 쓰는 명령어</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>명령어</th>
+            <th>설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>git status</code></td>
+            <td>변경된 파일, stage 된 파일, 새 파일, 삭제된 파일을 보여줍니다.</td>
+          </tr>
+          <tr>
+            <td><code>git diff</code></td>
+            <td>아직 stage 하지 않은 수정 내용을 줄 단위로 보여줍니다.</td>
+          </tr>
+          <tr>
+            <td><code>git diff --staged</code></td>
+            <td>다음 commit에 들어갈 내용을 보여줍니다.</td>
+          </tr>
+          <tr>
+            <td><code>git add file</code></td>
+            <td>특정 파일 하나를 다음 commit 대상으로 올립니다.</td>
+          </tr>
+          <tr>
+            <td><code>git add -p</code></td>
+            <td>파일의 일부 변경만 골라서 stage 합니다.</td>
+          </tr>
+          <tr>
+            <td><code>git commit -m "message"</code></td>
+            <td>stage 된 변경 사항으로 commit을 만듭니다.</td>
+          </tr>
+          <tr>
+            <td><code>git log --oneline --decorate -10</code></td>
+            <td>최근 commit 10개를 간단히 확인합니다.</td>
+          </tr>
+          <tr>
+            <td><code>git branch</code></td>
+            <td>현재 branch와 로컬 branch 목록을 확인합니다.</td>
+          </tr>
+          <tr>
+            <td><code>git switch branch-name</code></td>
+            <td>이미 존재하는 branch로 이동합니다.</td>
+          </tr>
+          <tr>
+            <td><code>git switch -c branch-name</code></td>
+            <td>새 branch를 만들고 바로 이동합니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>안전한 Commit 절차</h2>
+      <p>서버 리팩터링 파일만 commit하고 싶을 때는 아래처럼 파일을 명확히 지정합니다.</p>
+      <pre><code>git status
+git diff -- server/server.js server/package.json server/package-lock.json
+git add server/server.js server/package.json server/package-lock.json
+git diff --staged
+git commit -m "Refactor API server to Express"</code></pre>
+      <p class="note">관련 없는 파일이나 생성 파일이 섞여 있을 수 있으므로 <code>git add .</code>는 조심해서 사용하세요.</p>
+    </section>
+
+    <section>
+      <h2>무시되는 파일과 .env</h2>
+      <p>API key 같은 비밀 값은 commit하면 안 됩니다. 이 프로젝트는 환경 파일을 무시하도록 설정되어 있습니다.</p>
+      <pre><code>.env
+.env.local
+.env.*</code></pre>
+      <p><code>server/.env</code>가 내 컴퓨터에 있어도 일반 commit 대상에는 나타나지 않을 수 있습니다.</p>
+      <pre><code>git status --ignored
+git check-ignore -v server/.env</code></pre>
+      <p class="danger">실제 API key는 절대 commit하지 마세요. <code>OPENROUTER_API_KEY</code>와 <code>ELEVENLABS_API_KEY</code>는 <code>server/.env</code>에만 보관하세요.</p>
+    </section>
+
+    <section>
+      <h2>Pull 하기 전 확인</h2>
+      <p>다른 사람이 올린 변경 사항을 받기 전에 내 변경 사항을 먼저 확인합니다.</p>
+      <pre><code>git status
+git diff</code></pre>
+      <p>아직 commit하기 애매한 작업은 잠시 stash 할 수 있습니다.</p>
+      <pre><code>git stash push -m "work in progress"
+git pull
+git stash pop</code></pre>
+      <p class="note"><code>git stash pop</code> 후 충돌이 생기면 파일에 표시된 충돌 부분을 직접 고친 뒤 commit해야 합니다.</p>
+    </section>
+
+    <section>
+      <h2>되돌리기 명령어</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>상황</th>
+            <th>명령어</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>파일을 stage에서 내리고 수정은 유지</td>
+            <td><code>git restore --staged file</code></td>
+          </tr>
+          <tr>
+            <td>tracked 파일 하나의 수정 삭제</td>
+            <td><code>git restore file</code></td>
+          </tr>
+          <tr>
+            <td>삭제된 tracked 파일 확인</td>
+            <td><code>git status</code></td>
+          </tr>
+          <tr>
+            <td>마지막 commit 상태로 파일 복구</td>
+            <td><code>git restore file</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="danger"><code>git reset --hard</code>는 tracked local 변경 사항을 지웁니다. 정확히 이해한 경우에만 사용하세요.</p>
+    </section>
+
+    <section>
+      <h2>이 프로젝트에서 추천하는 규칙</h2>
+      <ul>
+        <li>소스 파일과 dependency 변경 시 lockfile을 함께 commit합니다.</li>
+        <li><code>node_modules</code>는 보통 <code>npm install</code>로 생성되므로 commit하지 않는 편이 좋습니다.</li>
+        <li>API key는 <code>server/.env</code>에만 둡니다.</li>
+        <li>commit 전에는 항상 <code>git diff</code>를 확인합니다.</li>
+        <li>큰 변경이나 위험한 변경은 새 branch에서 작업합니다.</li>
+      </ul>
+      <pre><code>git switch -c feature/server-express-refactor</code></pre>
+    </section>
+  </main>
+</body>
+</html>
