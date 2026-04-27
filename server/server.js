@@ -30,18 +30,108 @@ const SYSTEM_PROMPT =
   process.env.SYSTEM_PROMPT ||
   "You are a helpful AI assistant for this website. Answer clearly, be practical, and ask a short follow-up question only when needed.";
 const PERSONA_FILE = process.env.PERSONA_FILE || "persona.type.yaml";
+const SERVER_NAME = "my-ai-website";
+const SERVER_VERSION = "1.0.0";
+const PROTOCOL_REVISION = "2025-06-18";
+const TRANSPORT_HEADERS = [
+  "X-Protocol-Name",
+  "X-Protocol-Revision",
+  "X-Transport-Type",
+];
+
+const API_TOOLS = [
+  {
+    name: "chat",
+    title: "AI Chat",
+    description: "Send recent chat messages to the configured OpenRouter model.",
+    transport: {
+      method: "POST",
+      path: "/api/chat",
+      contentType: "application/json",
+      responseType: "application/json",
+    },
+    inputSchema: {
+      type: "object",
+      properties: {
+        messages: {
+          type: "array",
+          description: "Recent user and assistant messages.",
+        },
+      },
+      required: ["messages"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        reply: { type: "string" },
+        model: { type: "string" },
+        usage: { type: ["object", "null"] },
+      },
+      required: ["reply", "model", "usage"],
+    },
+    annotations: {
+      title: "AI Chat",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+  {
+    name: "voice",
+    title: "Text To Speech",
+    description: "Convert text into streamed speech audio with ElevenLabs.",
+    transport: {
+      method: "POST",
+      path: "/api/voice",
+      contentType: "application/json",
+      responseType: "audio/mpeg",
+    },
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: {
+          type: "string",
+          maxLength: 3000,
+          description: "Text to synthesize into speech.",
+        },
+      },
+      required: ["text"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        audio: { type: "string", description: "Streamed audio response body." },
+      },
+    },
+    annotations: {
+      title: "Text To Speech",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+];
 
 const clientDist = path.resolve(__dirname, "..", "client", "vite_project", "dist");
 const app = express();
 
+app.set("trust proxy", 1);
+
 // Shared middleware accepts browser requests and larger JSON bodies for chat
 // payloads that may include multimodal message content.
-app.use(cors());
+app.use(cors({ exposedHeaders: TRANSPORT_HEADERS }));
 app.use(express.json({ limit: MAX_UPLOAD_SIZE }));
 app.use(express.urlencoded({ extended: true, limit: MAX_UPLOAD_SIZE }));
+app.use(attachTransportHeaders);
 
 // API endpoints are wrapped so async exceptions flow into the Express error
 // handler instead of leaving requests hanging.
+app.get(
+  ["/api/protocol", "/api/metadata", "/.well-known/ai-server.json"],
+  handleAsync(handleProtocolMetadata)
+);
 app.post("/api/chat", handleAsync(handleChat));
 app.post("/api/voice", handleAsync(handleVoice));
 
@@ -67,6 +157,10 @@ app.use(handleError);
 app.listen(PORT, () => {
   console.log(`API server running at https://aichatbotsite.onrender.com`);
 });
+
+async function handleProtocolMetadata(req, res) {
+  res.status(200).json(buildProtocolMetadata(req));
+}
 
 async function handleChat(req, res) {
   if (!OPENROUTER_API_KEY) {
@@ -227,6 +321,71 @@ function handleAsync(handler) {
       next(error);
     }
   };
+}
+
+function attachTransportHeaders(req, res, next) {
+  if (req.path.startsWith("/api/")) {
+    res.setHeader(TRANSPORT_HEADERS[0], SERVER_NAME);
+    res.setHeader(TRANSPORT_HEADERS[1], PROTOCOL_REVISION);
+    res.setHeader(TRANSPORT_HEADERS[2], "http-json");
+  }
+
+  next();
+}
+
+function buildProtocolMetadata(req) {
+  const baseUrl = getBaseUrl(req);
+  const serverPath = path.resolve(__dirname, "server.js");
+
+  return {
+    name: SERVER_NAME,
+    version: SERVER_VERSION,
+    protocol: {
+      name: "custom-ai-chat-api",
+      revision: PROTOCOL_REVISION,
+      wireFormat: "HTTP JSON",
+    },
+    transport: {
+      type: "http-json",
+      baseUrl,
+      encoding: "utf-8",
+      endpoints: API_TOOLS.map((tool) => ({
+        name: tool.name,
+        url: `${baseUrl}${tool.transport.path}`,
+        ...tool.transport,
+      })),
+    },
+    annotations: {
+      audience: ["user", "assistant"],
+      priority: 0.8,
+      lastModified: getIsoModifiedTime(serverPath),
+    },
+    tools: API_TOOLS.map((tool) => ({
+      name: tool.name,
+      title: tool.title,
+      description: tool.description,
+      inputSchema: tool.inputSchema,
+      outputSchema: tool.outputSchema,
+      annotations: tool.annotations,
+    })),
+  };
+}
+
+function getBaseUrl(req) {
+  const forwardedHost = req.get("x-forwarded-host");
+  const host = forwardedHost || req.get("host") || `localhost:${PORT}`;
+  const forwardedProto = req.get("x-forwarded-proto");
+  const protocol = forwardedProto || req.protocol || "http";
+
+  return `${protocol}://${host}`;
+}
+
+function getIsoModifiedTime(filePath) {
+  try {
+    return fs.statSync(filePath).mtime.toISOString();
+  } catch {
+    return new Date().toISOString();
+  }
 }
 
 function handleNotFound(req, res) {
