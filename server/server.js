@@ -1,5 +1,7 @@
 const fs = require("fs");
+const http = require("http");
 const path = require("path");
+const crypto = require("crypto");
 const { Readable } = require("stream");
 require("dotenv").config({ path: path.resolve(__dirname, ".env"), quiet: true });
 const express = require("express");
@@ -45,7 +47,7 @@ const API_TOOLS = [
     title: "AI Chat",
     description: "Send recent chat messages to the configured OpenRouter model.",
     transport: {
-      method: "POST",
+      method: "WEBSOCKET",
       path: "/api/chat",
       contentType: "application/json",
       responseType: "application/json",
@@ -116,6 +118,7 @@ const API_TOOLS = [
 
 const clientDist = path.resolve(__dirname, "..", "client", "vite_project", "dist");
 const app = express();
+const server = http.createServer(app);
 
 app.set("trust proxy", 1);
 
@@ -154,7 +157,9 @@ app.get("*", serveReactApp);
 app.use(handleNotFound);
 app.use(handleError);
 
-app.listen(PORT, () => {
+server.on("upgrade", handleWebSocketUpgrade);
+
+server.listen(PORT, () => {
   console.log(`API server running at https://aichatbotsite.onrender.com`);
 });
 
@@ -163,17 +168,227 @@ async function handleProtocolMetadata(req, res) {
 }
 
 async function handleChat(req, res) {
-  if (!OPENROUTER_API_KEY) {
-    res.status(500).json({
-      error:
-        "Missing OPENROUTER_API_KEY. Add it to server/.env, then restart the server.",
+  const result = await createChatCompletion(req.body);
+
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+
+  res.status(200).json(result.data);
+}
+
+function handleWebSocketUpgrade(req, socket, head) {
+  const pathname = new URL(req.url, "http://localhost").pathname;
+  if (pathname !== "/api/chat") {
+    socket.destroy();
+    return;
+  }
+
+  const key = req.headers["sec-websocket-key"];
+  if (!key) {
+    socket.destroy();
+    return;
+  }
+
+  const acceptKey = crypto
+    .createHash("sha1")
+    .update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
+    .digest("base64");
+
+  socket.write(
+    [
+      "HTTP/1.1 101 Switching Protocols",
+      "Upgrade: websocket",
+      "Connection: Upgrade",
+      `Sec-WebSocket-Accept: ${acceptKey}`,
+      "",
+      "",
+    ].join("\r\n")
+  );
+
+  const connection = {
+    socket,
+    buffer: head && head.length ? Buffer.from(head) : Buffer.alloc(0),
+    fragments: [],
+  };
+
+  socket.on("data", (chunk) => handleWebSocketData(connection, chunk));
+  socket.on("error", (error) => console.error(error));
+}
+
+function handleWebSocketData(connection, chunk) {
+  connection.buffer = Buffer.concat([connection.buffer, chunk]);
+
+  while (connection.buffer.length) {
+    let parsed;
+    try {
+      parsed = readWebSocketFrame(connection.buffer);
+    } catch (error) {
+      console.error(error);
+      sendWebSocketJson(connection.socket, {
+        type: "error",
+        error: "WebSocket payload is too large.",
+        status: 413,
+      });
+      closeWebSocket(connection.socket);
+      return;
+    }
+
+    if (!parsed) return;
+
+    connection.buffer = connection.buffer.slice(parsed.frameLength);
+    handleWebSocketFrame(connection, parsed);
+  }
+}
+
+function handleWebSocketFrame(connection, frame) {
+  if (frame.opcode === 0x8) {
+    closeWebSocket(connection.socket);
+    return;
+  }
+
+  if (frame.opcode === 0x9) {
+    writeWebSocketFrame(connection.socket, 0xA, frame.payload);
+    return;
+  }
+
+  if (frame.opcode === 0x1 && !frame.fin) {
+    connection.fragments = [frame.payload];
+    return;
+  }
+
+  if (frame.opcode === 0x0 && connection.fragments.length) {
+    connection.fragments.push(frame.payload);
+    if (!frame.fin) return;
+
+    processWebSocketMessage(connection, Buffer.concat(connection.fragments).toString("utf8"));
+    connection.fragments = [];
+    return;
+  }
+
+  if (frame.opcode === 0x1) {
+    processWebSocketMessage(connection, frame.payload.toString("utf8"));
+  }
+}
+
+async function processWebSocketMessage(connection, rawMessage) {
+  let payload;
+  try {
+    payload = JSON.parse(rawMessage);
+  } catch {
+    sendWebSocketJson(connection.socket, {
+      type: "error",
+      error: "Invalid JSON message.",
+      status: 400,
     });
     return;
   }
 
+  sendWebSocketJson(connection.socket, { type: "status", status: "thinking" });
+
+  const result = await createChatCompletion(payload);
+  if (!result.ok) {
+    sendWebSocketJson(connection.socket, {
+      type: "error",
+      error: result.error,
+      status: result.status,
+    });
+    return;
+  }
+
+  sendWebSocketJson(connection.socket, {
+    type: "reply",
+    ...result.data,
+  });
+}
+
+function readWebSocketFrame(buffer) {
+  if (buffer.length < 2) return null;
+
+  const firstByte = buffer[0];
+  const secondByte = buffer[1];
+  const fin = Boolean(firstByte & 0x80);
+  const opcode = firstByte & 0x0f;
+  const masked = Boolean(secondByte & 0x80);
+  let payloadLength = secondByte & 0x7f;
+  let offset = 2;
+
+  if (payloadLength === 126) {
+    if (buffer.length < offset + 2) return null;
+    payloadLength = buffer.readUInt16BE(offset);
+    offset += 2;
+  } else if (payloadLength === 127) {
+    if (buffer.length < offset + 8) return null;
+    const length = buffer.readBigUInt64BE(offset);
+    if (length > BigInt(Number.MAX_SAFE_INTEGER)) {
+      throw new Error("WebSocket payload is too large.");
+    }
+    payloadLength = Number(length);
+    offset += 8;
+  }
+
+  const maskLength = masked ? 4 : 0;
+  const frameLength = offset + maskLength + payloadLength;
+  if (buffer.length < frameLength) return null;
+
+  let payload = buffer.slice(offset + maskLength, frameLength);
+  if (masked) {
+    const mask = buffer.slice(offset, offset + maskLength);
+    payload = Buffer.from(payload);
+    for (let index = 0; index < payload.length; index += 1) {
+      payload[index] ^= mask[index % 4];
+    }
+  }
+
+  return { fin, opcode, payload, frameLength };
+}
+
+function sendWebSocketJson(socket, payload) {
+  if (socket.destroyed) return;
+  writeWebSocketFrame(socket, 0x1, Buffer.from(JSON.stringify(payload), "utf8"));
+}
+
+function closeWebSocket(socket) {
+  if (socket.destroyed) return;
+  writeWebSocketFrame(socket, 0x8, Buffer.alloc(0));
+  socket.end();
+}
+
+function writeWebSocketFrame(socket, opcode, payload) {
+  const length = payload.length;
+  let header;
+
+  if (length < 126) {
+    header = Buffer.from([0x80 | opcode, length]);
+  } else if (length <= 0xffff) {
+    header = Buffer.alloc(4);
+    header[0] = 0x80 | opcode;
+    header[1] = 126;
+    header.writeUInt16BE(length, 2);
+  } else {
+    header = Buffer.alloc(10);
+    header[0] = 0x80 | opcode;
+    header[1] = 127;
+    header.writeBigUInt64BE(BigInt(length), 2);
+  }
+
+  socket.write(Buffer.concat([header, payload]));
+}
+
+async function createChatCompletion(payload) {
+  if (!OPENROUTER_API_KEY) {
+    return {
+      ok: false,
+      status: 500,
+      error:
+        "Missing OPENROUTER_API_KEY. Add it to server/.env, then restart the server.",
+    };
+  }
+
   // Keep only recent user/assistant turns with valid content before forwarding
   // the conversation to the model provider.
-  const incomingMessages = Array.isArray(req.body?.messages) ? req.body.messages : [];
+  const incomingMessages = Array.isArray(payload?.messages) ? payload.messages : [];
   const messages = incomingMessages
     .filter((message) => {
       return (
@@ -189,8 +404,7 @@ async function handleChat(req, res) {
     }));
 
   if (!messages.length || messages[messages.length - 1].role !== "user") {
-    res.status(400).json({ error: "Send at least one user message." });
-    return;
+    return { ok: false, status: 400, error: "Send at least one user message." };
   }
 
   let response;
@@ -211,10 +425,11 @@ async function handleChat(req, res) {
     });
   } catch (error) {
     console.error(error);
-    res.status(502).json({
+    return {
+      ok: false,
+      status: 502,
       error: "Could not connect to OpenRouter. Check network access and server logs.",
-    });
-    return;
+    };
   }
 
   const data = await response.json().catch(() => ({}));
@@ -224,21 +439,22 @@ async function handleChat(req, res) {
       data.error?.message ||
       data.message ||
       `OpenRouter request failed with ${response.status}`;
-    res.status(response.status).json({ error: apiMessage });
-    return;
+    return { ok: false, status: response.status, error: apiMessage };
   }
 
   const reply = data.choices?.[0]?.message?.content;
   if (!reply) {
-    res.status(502).json({ error: "OpenRouter returned an empty response." });
-    return;
+    return { ok: false, status: 502, error: "OpenRouter returned an empty response." };
   }
 
-  res.status(200).json({
-    reply,
-    model: data.model || OPENROUTER_MODEL,
-    usage: data.usage || null,
-  });
+  return {
+    ok: true,
+    data: {
+      reply,
+      model: data.model || OPENROUTER_MODEL,
+      usage: data.usage || null,
+    },
+  };
 }
 
 async function handleVoice(req, res) {
@@ -343,15 +559,18 @@ function buildProtocolMetadata(req) {
     protocol: {
       name: "custom-ai-chat-api",
       revision: PROTOCOL_REVISION,
-      wireFormat: "HTTP JSON",
+      wireFormat: "WebSocket JSON plus HTTP JSON",
     },
     transport: {
-      type: "http-json",
+      type: "mixed",
       baseUrl,
       encoding: "utf-8",
       endpoints: API_TOOLS.map((tool) => ({
         name: tool.name,
-        url: `${baseUrl}${tool.transport.path}`,
+        url:
+          tool.name === "chat"
+            ? `${getWebSocketBaseUrl(req)}${tool.transport.path}`
+            : `${baseUrl}${tool.transport.path}`,
         ...tool.transport,
       })),
     },
@@ -378,6 +597,11 @@ function getBaseUrl(req) {
   const protocol = forwardedProto || req.protocol || "http";
 
   return `${protocol}://${host}`;
+}
+
+function getWebSocketBaseUrl(req) {
+  const baseUrl = getBaseUrl(req);
+  return baseUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
 }
 
 function getIsoModifiedTime(filePath) {

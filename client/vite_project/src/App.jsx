@@ -63,17 +63,7 @@ function App() {
     setIsSending(true)
 
     try {
-      const response = await fetch(`${API_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: nextMessages }),
-      })
-
-      const data = await response.json()
-      if (!response.ok) {
-        throw new Error(data.error || 'Chat request failed')
-      }
-
+      const data = await sendChatOverWebSocket(nextMessages)
       const finalMessages = [...nextMessages, { role: 'assistant', content: data.reply }]
       updateActiveSession(finalMessages)
       setStatus('')
@@ -86,6 +76,63 @@ function App() {
     } finally {
       setIsSending(false)
     }
+  }
+
+  function sendChatOverWebSocket(nextMessages) {
+    return new Promise((resolve, reject) => {
+      const socket = new WebSocket(toWebSocketUrl(`${API_URL}/api/chat`))
+      let settled = false
+
+      const timeout = window.setTimeout(() => {
+        finish(() => reject(new Error('Chat request timed out')))
+      }, 120000)
+
+      function finish(callback) {
+        if (settled) return
+        settled = true
+        window.clearTimeout(timeout)
+        socket.close()
+        callback()
+      }
+
+      socket.addEventListener('open', () => {
+        socket.send(JSON.stringify({ messages: nextMessages }))
+      })
+
+      socket.addEventListener('message', (event) => {
+        let data
+        try {
+          data = JSON.parse(event.data)
+        } catch {
+          finish(() => reject(new Error('Invalid chat response')))
+          return
+        }
+
+        if (data.type === 'status') {
+          setStatus('Thinking...')
+          return
+        }
+
+        if (data.type === 'error') {
+          finish(() => reject(new Error(data.error || 'Chat request failed')))
+          return
+        }
+
+        if (data.type === 'reply') {
+          finish(() => resolve(data))
+        }
+      })
+
+      socket.addEventListener('error', () => {
+        finish(() => reject(new Error('Could not connect to chat WebSocket')))
+      })
+
+      socket.addEventListener('close', () => {
+        if (!settled) {
+          finish(() => reject(new Error('Chat WebSocket closed before a reply arrived')))
+        }
+      })
+    })
   }
 
   function updateActiveSession(nextMessages) {
@@ -585,6 +632,10 @@ function readAsText(file) {
     reader.onerror = reject
     reader.readAsText(file)
   })
+}
+
+function toWebSocketUrl(url) {
+  return url.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
 }
 
 export default App
