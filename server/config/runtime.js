@@ -4,7 +4,7 @@ const path = require("path");
 // Loads server/.env once, builds shared filesystem paths, and exposes provider
 // settings used by routes, services, and middleware across the server.
 require("dotenv").config({ path: path.resolve(__dirname, "..", ".env"), quiet: true });
-
+require("dotenv").config({path:path.resolve(__dirname,"..",".env")})
 const serverRoot = path.resolve(__dirname, "..");
 const clientDist = path.resolve(serverRoot, "..", "client", "vite_project", "dist");
 
@@ -30,6 +30,13 @@ const ELEVENLABS_MODEL_ID = process.env.ELEVENLABS_MODEL_ID || "eleven_multiling
 const ELEVENLABS_OUTPUT_FORMAT =
   process.env.ELEVENLABS_OUTPUT_FORMAT || "mp3_44100_128";
 
+const NOVELAI_API_KEY = process.env.NOVELAI_API_KEY;
+const NOVELAI_BASE_URL = process.env.NOVELAI_BASE_URL || "https://image.novelai.net";
+const NOVELAI_IMAGE_MODEL =
+  process.env.NOVELAI_IMAGE_MODEL || "nai-diffusion-4-5-curated";
+const NOVELAI_IMAGE_ENDPOINT =
+  process.env.NOVELAI_IMAGE_ENDPOINT || "/ai/generate-image";
+
 const SYSTEM_PROMPT =
   process.env.SYSTEM_PROMPT ||
   "You are a helpful AI assistant for this website. Answer clearly, be practical, and ask a short follow-up question only when needed.";
@@ -50,6 +57,10 @@ module.exports = {
   ELEVENLABS_VOICE_ID,
   ELEVENLABS_MODEL_ID,
   ELEVENLABS_OUTPUT_FORMAT,
+  NOVELAI_API_KEY,
+  NOVELAI_BASE_URL,
+  NOVELAI_IMAGE_MODEL,
+  NOVELAI_IMAGE_ENDPOINT,
   SYSTEM_PROMPT,
   PERSONA_FILE,
 };

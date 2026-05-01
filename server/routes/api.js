@@ -5,6 +5,7 @@ const express = require("express");
 // handlers stay small and easy to scan.
 const { handleAsync } = require("../utils/asyncHandler");
 const { createChatCompletion } = require("../services/chatService");
+const { generateNovelAiImage } = require("../services/imageService");
 const { streamVoice } = require("../services/voiceService");
 const { buildProtocolMetadata } = require("../services/protocolService");
 
@@ -16,6 +17,7 @@ function createApiRouter() {
     handleAsync(handleProtocolMetadata)
   );
   router.post("/chat", handleAsync(handleChat));
+  router.post("/image", handleAsync(handleImage));
   router.post("/voice", handleAsync(handleVoice));
 
   return router;
@@ -27,6 +29,17 @@ async function handleProtocolMetadata(req, res) {
 
 async function handleChat(req, res) {
   const result = await createChatCompletion(req.body);
+
+  if (!result.ok) {
+    res.status(result.status).json({ error: result.error });
+    return;
+  }
+
+  res.status(200).json(result.data);
+}
+
+async function handleImage(req, res) {
+  const result = await generateNovelAiImage(req.body);
 
   if (!result.ok) {
     res.status(result.status).json({ error: result.error });

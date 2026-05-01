@@ -1,0 +1,259 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server Grammar</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#17202a",
+            muted: "#607080",
+            line: "#d7dee7",
+          },
+          boxShadow: {
+            panel: "0 18px 45px rgba(23, 32, 42, 0.10)",
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body class="bg-slate-100 text-ink antialiased">
+  <header class="bg-slate-950 text-white">
+    <div class="mx-auto max-w-7xl px-5 py-10 sm:px-8 lg:px-10">
+      <p class="mb-3 text-sm font-bold uppercase tracking-normal text-cyan-300">Essential Module Grammar</p>
+      <h1 class="text-4xl font-extrabold tracking-normal sm:text-5xl">Server Grammar</h1>
+      <p class="mt-4 max-w-4xl text-base leading-7 text-slate-300 sm:text-lg">
+        A practical reading guide for the syntax patterns used across this Express server:
+        imports, exports, middleware, routes, services, async handlers, static files, and WebSockets.
+      </p>
+    </div>
+  </header>
+
+  <main class="mx-auto grid max-w-7xl gap-7 px-5 py-7 sm:px-8 lg:px-10">
+    <section class="rounded-lg border border-line bg-white p-6 shadow-panel">
+      <h2 class="text-2xl font-bold tracking-normal">How to Read a Module</h2>
+      <div class="mt-5 grid gap-4 lg:grid-cols-3">
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">1. Imports</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">
+            The top of each file declares what it needs with
+            <code class="rounded bg-white px-1.5 py-0.5 text-xs">require(...)</code>.
+          </p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">2. Local Logic</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">
+            The middle usually contains constants, helper functions, route handlers, or service functions.
+          </p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">3. Exports</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">
+            The bottom exposes reusable values with
+            <code class="rounded bg-white px-1.5 py-0.5 text-xs">module.exports</code>.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-line bg-white p-6 shadow-panel">
+      <h2 class="text-2xl font-bold tracking-normal">Core Grammar Patterns</h2>
+      <div class="mt-5 grid gap-5 lg:grid-cols-2">
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">CommonJS Import</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>const express = require("express");
+const { PORT, clientDist } = require("./config/runtime");</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            This means the file is borrowing code from another package or local file.
+            Curly braces pick named exports from an object.
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">CommonJS Export</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>module.exports = {
+  createApiRouter,
+  handleProtocolMetadata,
+};</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            This makes functions available to other files. Another module can import them with
+            destructuring.
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">Express App Setup</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>const app = express();
+const server = http.createServer(app);
+
+app.use(express.json({ limit: MAX_UPLOAD_SIZE }));</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">app</code> handles HTTP logic.
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">server</code> is the lower-level HTTP server that also supports WebSocket upgrades.
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">Middleware</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>app.use(cors());
+app.use(attachTransportHeaders);</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            Middleware runs before route handlers. It can read the request, change the response,
+            reject the request, or pass control to the next handler.
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">Route Handler</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>app.get("/blueprint.html", (req, res) =&gt; {
+  res.setHeader("Cache-Control", "no-store");
+  res.sendFile(blueprintPagePath);
+});</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            A route matches one HTTP method and path. The handler receives
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">req</code> for request data and
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">res</code> for the response.
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">Router Module</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>const router = express.Router();
+
+router.post("/chat", handleAsync(handleChat));
+
+app.use("/api", createApiRouter());</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            A router groups related routes. Mounting it at
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">/api</code> means
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">/chat</code> becomes
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">/api/chat</code>.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-line bg-white p-6 shadow-panel">
+      <h2 class="text-2xl font-bold tracking-normal">Module Grammar by Folder</h2>
+      <div class="mt-5 overflow-x-auto">
+        <table class="w-full min-w-[860px] border-collapse text-left text-sm">
+          <thead>
+            <tr class="border-b border-line bg-slate-100">
+              <th class="p-3 font-bold">Folder</th>
+              <th class="p-3 font-bold">Grammar to Understand</th>
+              <th class="p-3 font-bold">Why It Matters</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-line">
+            <tr>
+              <td class="p-3 font-semibold">config</td>
+              <td class="p-3 text-muted"><code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">process.env</code>, constants, path building, exports</td>
+              <td class="p-3 text-muted">Turns environment values into stable settings used everywhere else.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold">middleware</td>
+              <td class="p-3 text-muted">Functions shaped like <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">(req, res, next)</code></td>
+              <td class="p-3 text-muted">Middleware prepares requests and centralizes repeated response behavior.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold">routes</td>
+              <td class="p-3 text-muted">HTTP verbs, routers, path strings, handler callbacks</td>
+              <td class="p-3 text-muted">Routes decide which service should handle each incoming request.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold">services</td>
+              <td class="p-3 text-muted">Async functions, validation, external API calls, returned objects</td>
+              <td class="p-3 text-muted">Services contain the main feature behavior and keep routes thin.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold">utils</td>
+              <td class="p-3 text-muted">Small pure helpers, input normalization, shared calculations</td>
+              <td class="p-3 text-muted">Utilities remove repeated logic from routes and services.</td>
+            </tr>
+            <tr>
+              <td class="p-3 font-semibold">websocket</td>
+              <td class="p-3 text-muted">Upgrade events, buffers, frames, connection lifecycle events</td>
+              <td class="p-3 text-muted">WebSocket code handles persistent connections instead of single HTTP responses.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-line bg-white p-6 shadow-panel">
+      <h2 class="text-2xl font-bold tracking-normal">Essential Express Vocabulary</h2>
+      <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">req</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">The incoming request. Read body, params, query strings, headers, and URL data from it.</p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">res</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">The outgoing response. Use it to set status codes, headers, JSON, files, or streams.</p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">next</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">A callback that moves control to the next middleware or error handler.</p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">params</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">Dynamic path values, such as the code in <code class="rounded bg-white px-1.5 py-0.5 text-xs">/state/:code</code>.</p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">query</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">Values after a question mark, such as <code class="rounded bg-white px-1.5 py-0.5 text-xs">?code=404</code>.</p>
+        </article>
+        <article class="rounded-lg border border-line bg-slate-50 p-4">
+          <h3 class="font-bold">body</h3>
+          <p class="mt-2 text-sm leading-6 text-muted">Posted JSON or form data, available after body-parsing middleware runs.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-line bg-white p-6 shadow-panel">
+      <h2 class="text-2xl font-bold tracking-normal">Error and Async Grammar</h2>
+      <div class="mt-5 grid gap-5 lg:grid-cols-2">
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">Async Route Wrapper</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>function handleAsync(fn) {
+  return (req, res, next) =&gt; {
+    Promise.resolve(fn(req, res, next)).catch(next);
+  };
+}</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            Async route errors do not need repeated try/catch blocks. The wrapper forwards failures to Express error middleware.
+          </p>
+        </article>
+
+        <article class="rounded-lg border border-line bg-white p-5">
+          <h3 class="text-lg font-bold">Error Middleware</h3>
+          <pre class="mt-3 overflow-x-auto rounded-lg bg-slate-950 p-4 text-sm text-slate-100"><code>function handleError(error, req, res, next) {
+  console.error(error);
+  res.status(500).json({ error: "Server error" });
+}</code></pre>
+          <p class="mt-3 text-sm leading-6 text-muted">
+            Error middleware has four arguments. Express recognizes that shape and uses it when a route calls
+            <code class="rounded bg-slate-100 px-1.5 py-0.5 text-xs">next(error)</code>.
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <section class="rounded-lg border border-line bg-white p-6 shadow-panel">
+      <h2 class="text-2xl font-bold tracking-normal">Reading Checklist</h2>
+      <ol class="mt-5 grid gap-3 text-sm leading-6 text-muted">
+        <li class="rounded-lg border border-line bg-slate-50 p-4"><strong class="text-ink">Find imports.</strong> Ask what this module depends on.</li>
+        <li class="rounded-lg border border-line bg-slate-50 p-4"><strong class="text-ink">Find exports.</strong> Ask what this module gives to the rest of the server.</li>
+        <li class="rounded-lg border border-line bg-slate-50 p-4"><strong class="text-ink">Find request shapes.</strong> Look for path params, query strings, body fields, and headers.</li>
+        <li class="rounded-lg border border-line bg-slate-50 p-4"><strong class="text-ink">Find response shapes.</strong> Look for status codes, JSON objects, sent files, streams, or socket frames.</li>
+        <li class="rounded-lg border border-line bg-slate-50 p-4"><strong class="text-ink">Trace errors.</strong> Check whether failures throw, return JSON directly, or pass through error middleware.</li>
+      </ol>
+    </section>
+  </main>
+</body>
+</html>

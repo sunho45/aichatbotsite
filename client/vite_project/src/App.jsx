@@ -17,6 +17,11 @@ function App() {
     return localStorage.getItem('voiceEnabled') === 'true'
   })
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [imagePrompt, setImagePrompt] = useState('')
+  const [negativePrompt, setNegativePrompt] = useState('')
+  const [imageSize, setImageSize] = useState('1024x1024')
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false)
+  const [generatedImage, setGeneratedImage] = useState(null)
   const [attachments, setAttachments] = useState([])
   const audioRef = useRef(null)
   const API_URL = "https://aichatbotsite.onrender.com";
@@ -301,6 +306,42 @@ function App() {
     })
   }
 
+  async function generateImage(event) {
+    event.preventDefault()
+
+    const content = imagePrompt.trim()
+    if (!content || isGeneratingImage) return
+
+    const [width, height] = imageSize.split('x').map(Number)
+    setIsGeneratingImage(true)
+    setStatus('Generating image with NovelAI...')
+
+    try {
+      const response = await fetch(`${API_URL}/api/image`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: content,
+          negativePrompt,
+          width,
+          height,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || 'Image generation failed')
+      }
+
+      setGeneratedImage(data)
+      setStatus('')
+    } catch (error) {
+      setStatus(error.message)
+    } finally {
+      setIsGeneratingImage(false)
+    }
+  }
+
   return (
     <main className="appFrame">
       <aside className="sidebar" aria-label="Chat settings">
@@ -328,6 +369,57 @@ function App() {
         <div className="sidebarStatus">
           {isSpeaking ? 'Speaking now' : 'Voice plays automatically when enabled.'}
         </div>
+
+        <form className="imageTool" onSubmit={generateImage}>
+          <div className="imageToolHeader">
+            <span>NovelAI Image</span>
+            <select
+              value={imageSize}
+              onChange={(event) => setImageSize(event.target.value)}
+              aria-label="Image size"
+            >
+              <option value="768x1024">768 x 1024</option>
+              <option value="1024x1024">1024 x 1024</option>
+              <option value="1024x768">1024 x 768</option>
+            </select>
+          </div>
+
+          <label className="srOnly" htmlFor="imagePrompt">
+            Image prompt
+          </label>
+          <textarea
+            id="imagePrompt"
+            className="imagePrompt"
+            rows="3"
+            placeholder="Image prompt or tags..."
+            value={imagePrompt}
+            onChange={(event) => setImagePrompt(event.target.value)}
+          />
+
+          <label className="srOnly" htmlFor="negativePrompt">
+            Negative prompt
+          </label>
+          <input
+            id="negativePrompt"
+            className="negativePrompt"
+            placeholder="Negative prompt"
+            value={negativePrompt}
+            onChange={(event) => setNegativePrompt(event.target.value)}
+          />
+
+          <button type="submit" disabled={isGeneratingImage || !imagePrompt.trim()}>
+            {isGeneratingImage ? 'Generating' : 'Generate'}
+          </button>
+
+          {generatedImage?.image ? (
+            <figure className="generatedPreview">
+              <img src={generatedImage.image} alt={imagePrompt || 'Generated NovelAI result'} />
+              <figcaption>
+                {generatedImage.width} x {generatedImage.height} - seed {generatedImage.seed}
+              </figcaption>
+            </figure>
+          ) : null}
+        </form>
 
         <div className="sessionHeader">
           <span>Sessions</span>

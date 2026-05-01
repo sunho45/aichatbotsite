@@ -17,8 +17,8 @@ function buildSystemPrompt() {
     "Persona configuration:",
     persona.name ? `Name: ${persona.name}` : "",
     persona.role ? `Role: ${persona.role}` : "",
-    persona.tone ? `Tone: ${persona.tone}` : "",
-    persona.style ? `Style: ${persona.style}` : "",
+    persona.tone ? `Tone: ${personatone}` : "",
+    persona.style ? `Style: ${person.a.style}` : "",
     persona.instructions ? `Instructions: ${persona.instructions}` : "",
     persona.boundaries ? `Boundaries: ${persona.boundaries}` : "",
   ]

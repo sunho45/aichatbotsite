@@ -49,6 +49,56 @@ const API_TOOLS = [
     },
   },
   {
+    name: "image",
+    title: "NovelAI Image Generation",
+    description: "Generate one image from a text prompt with NovelAI Diffusion.",
+    transport: {
+      method: "POST",
+      path: "/api/image",
+      contentType: "application/json",
+      responseType: "application/json",
+    },
+    inputSchema: {
+      type: "object",
+      properties: {
+        prompt: {
+          type: "string",
+          maxLength: 1200,
+          description: "Image prompt or tags to send to NovelAI.",
+        },
+        negativePrompt: {
+          type: "string",
+          maxLength: 1200,
+          description: "Things NovelAI should avoid.",
+        },
+        width: { type: "number" },
+        height: { type: "number" },
+        steps: { type: "number" },
+        scale: { type: "number" },
+        seed: { type: "number" },
+      },
+      required: ["prompt"],
+    },
+    outputSchema: {
+      type: "object",
+      properties: {
+        image: { type: "string", description: "Generated image data URL." },
+        model: { type: "string" },
+        seed: { type: "number" },
+        width: { type: "number" },
+        height: { type: "number" },
+      },
+      required: ["image", "model", "seed", "width", "height"],
+    },
+    annotations: {
+      title: "NovelAI Image Generation",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
+      openWorldHint: true,
+    },
+  },
+  {
     name: "voice",
     title: "Text To Speech",
     description: "Convert text into streamed speech audio with ElevenLabs.",

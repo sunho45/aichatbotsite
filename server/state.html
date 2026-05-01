@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Server State</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f6f8;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #617080;
+      --line: #d7dee7;
+      --accent: #1f7a5a;
+      --warn: #a15c00;
+      --danger: #b42318;
+      --shadow: 0 18px 45px rgba(23, 32, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 28px;
+      background:
+        linear-gradient(rgba(244, 246, 248, 0.88), rgba(244, 246, 248, 0.94)),
+        radial-gradient(circle at 20% 20%, rgba(31, 122, 90, 0.18), transparent 34%),
+        #f4f6f8;
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      width: min(920px, 100%);
+      background: rgba(255, 255, 255, 0.96);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    header {
+      display: grid;
+      gap: 10px;
+      padding: clamp(24px, 5vw, 44px);
+      border-bottom: 1px solid var(--line);
+      background: #ffffff;
+    }
+
+    .label {
+      margin: 0;
+      color: var(--accent);
+      font-size: 0.8rem;
+      font-weight: 800;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(2.4rem, 12vw, 6.5rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    .message {
+      max-width: 650px;
+      margin: 0;
+      color: var(--muted);
+      font-size: clamp(1rem, 2vw, 1.16rem);
+      line-height: 1.55;
+    }
+
+    .content {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+      gap: 24px;
+      padding: clamp(22px, 4vw, 36px);
+    }
+
+    .details,
+    .codes {
+      min-width: 0;
+    }
+
+    h2 {
+      margin: 0 0 14px;
+      font-size: 1rem;
+      letter-spacing: 0;
+    }
+
+    dl {
+      display: grid;
+      gap: 12px;
+      margin: 0;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfd;
+    }
+
+    dt {
+      font-weight: 800;
+    }
+
+    dd {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .codes {
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+
+    a {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      min-height: 46px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      color: var(--text);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    a:hover,
+    a.active {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 0.92rem;
+      font-weight: 500;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 0;
+        place-items: stretch;
+      }
+
+      main {
+        min-height: 100vh;
+        border: 0;
+        border-radius: 0;
+      }
+
+      .content {
+        grid-template-columns: 1fr;
+      }
+
+      .row {
+        grid-template-columns: 70px 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <p class="label">Server State</p>
+      <h1 id="code">200</h1>
+      <p class="message" id="message">The server is reachable and ready to respond.</p>
+    </header>
+
+    <section class="content" aria-label="Server status details">
+      <div class="details">
+        <h2>What this status means</h2>
+        <dl>
+          <div class="row">
+            <dt>400</dt>
+            <dd>Bad Request. The server could not understand the request.</dd>
+          </div>
+          <div class="row">
+            <dt>401</dt>
+            <dd>Unauthorized. Sign-in or a valid token is required.</dd>
+          </div>
+          <div class="row">
+            <dt>403</dt>
+            <dd>Forbidden. The request was understood, but access is not allowed.</dd>
+          </div>
+          <div class="row">
+            <dt>404</dt>
+            <dd>Not Found. The requested page or resource does not exist.</dd>
+          </div>
+          <div class="row">
+            <dt>500</dt>
+            <dd>Server Error. The server hit an unexpected problem.</dd>
+          </div>
+        </dl>
+      </div>
+
+      <nav class="codes" aria-label="Example server states">
+        <h2>Open a state</h2>
+        <a href="/state/400" data-code="400">400 <span class="hint">Bad request</span></a>
+        <a href="/state/401" data-code="401">401 <span class="hint">Unauthorized</span></a>
+        <a href="/state/403" data-code="403">403 <span class="hint">Forbidden</span></a>
+        <a href="/state/404" data-code="404">404 <span class="hint">Not found</span></a>
+        <a href="/state/500" data-code="500">500 <span class="hint">Server error</span></a>
+      </nav>
+    </section>
+  </main>
+
+  <script>
+    const states = {
+      400: "Bad Request. Check the request format and try again.",
+      401: "Unauthorized. This request needs a valid login or access token.",
+      403: "Forbidden. The server understood the request but access is blocked.",
+      404: "Not Found. The page or resource could not be found.",
+      500: "Server Error. Something went wrong on the server.",
+    };
+
+    const pathCode = window.location.pathname.match(/\/state\/(\d{3})$/)?.[1];
+    const queryCode = new URLSearchParams(window.location.search).get("code");
+    const code = states[pathCode] ? pathCode : states[queryCode] ? queryCode : "200";
+
+    document.getElementById("code").textContent = code;
+    document.getElementById("message").textContent =
+      states[code] || "The server is reachable and ready to respond.";
+
+    document.querySelector(`[data-code="${code}"]`)?.classList.add("active");
+  </script>
+</body>
+</html>
