@@ -5,6 +5,15 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024
 const SESSIONS_KEY = 'chatSessions'
 const ACTIVE_SESSION_KEY = 'activeChatSessionId'
 const PROFILE_IMAGE_KEY = 'chatbotProfileImage'
+const IMAGE_HISTORY_KEY = 'generatedImageHistory'
+const IMAGE_STYLES = {
+  general: '',
+  anime: 'anime illustration, clean line art, vivid color',
+  cinematic: 'cinematic lighting, detailed composition, dramatic atmosphere',
+  portrait: 'portrait, expressive face, detailed eyes, soft lighting',
+  concept: 'concept art, detailed environment, production art',
+}
+const API_URL = import.meta.env.VITE_API_URL || ''
 
 function App() {
   const [sessions, setSessions] = useState(loadSessions)
@@ -20,11 +29,13 @@ function App() {
   const [imagePrompt, setImagePrompt] = useState('')
   const [negativePrompt, setNegativePrompt] = useState('')
   const [imageSize, setImageSize] = useState('1024x1024')
+  const [imageStyle, setImageStyle] = useState('general')
+  const [imageSteps, setImageSteps] = useState(28)
+  const [imageScale, setImageScale] = useState(5)
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
-  const [generatedImage, setGeneratedImage] = useState(null)
+  const [generatedImages, setGeneratedImages] = useState(loadImageHistory)
   const [attachments, setAttachments] = useState([])
   const audioRef = useRef(null)
-  const API_URL = "https://aichatbotsite.onrender.com";
   const activeSession = useMemo(() => {
     return sessions.find((session) => session.id === activeSessionId) || sessions[0]
   }, [activeSessionId, sessions])
@@ -52,6 +63,10 @@ function App() {
       localStorage.removeItem(PROFILE_IMAGE_KEY)
     }
   }, [profileImage])
+
+  useEffect(() => {
+    localStorage.setItem(IMAGE_HISTORY_KEY, JSON.stringify(generatedImages.slice(0, 8)))
+  }, [generatedImages])
 
   async function sendMessage(event) {
     event.preventDefault()
@@ -313,6 +328,7 @@ function App() {
     if (!content || isGeneratingImage) return
 
     const [width, height] = imageSize.split('x').map(Number)
+    const styledPrompt = [content, IMAGE_STYLES[imageStyle]].filter(Boolean).join(', ')
     setIsGeneratingImage(true)
     setStatus('Generating image with NovelAI...')
 
@@ -321,10 +337,12 @@ function App() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          prompt: content,
+          prompt: styledPrompt,
           negativePrompt,
           width,
           height,
+          steps: imageSteps,
+          scale: imageScale,
         }),
       })
 
@@ -333,13 +351,43 @@ function App() {
         throw new Error(data.error || 'Image generation failed')
       }
 
-      setGeneratedImage(data)
+      const nextImage = {
+        ...data,
+        id: createId(),
+        prompt: content,
+        style: imageStyle,
+        createdAt: Date.now(),
+      }
+      setGeneratedImages((current) => [nextImage, ...current].slice(0, 8))
       setStatus('')
     } catch (error) {
       setStatus(error.message)
     } finally {
       setIsGeneratingImage(false)
     }
+  }
+
+  function attachGeneratedImage(image) {
+    const fileId = image.seed || image.createdAt || image.id || 'drawing'
+    const attachment = {
+      name: `generated-${fileId}.png`,
+      type: 'image/png',
+      dataUrl: image.image,
+      text: '[Generated image attached]',
+    }
+
+    setAttachments((current) => [attachment, ...current].slice(0, 6))
+    setStatus('Generated image added to the next chat message.')
+  }
+
+  function downloadGeneratedImage(image) {
+    const fileId = image.seed || image.createdAt || image.id || 'drawing'
+    const link = document.createElement('a')
+    link.href = image.image
+    link.download = `ai-drawing-${fileId}.png`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
   }
 
   return (
@@ -372,7 +420,7 @@ function App() {
 
         <form className="imageTool" onSubmit={generateImage}>
           <div className="imageToolHeader">
-            <span>NovelAI Image</span>
+            <span>AI Drawing</span>
             <select
               value={imageSize}
               onChange={(event) => setImageSize(event.target.value)}
@@ -383,6 +431,19 @@ function App() {
               <option value="1024x768">1024 x 768</option>
             </select>
           </div>
+
+          <select
+            className="imageSelect"
+            value={imageStyle}
+            onChange={(event) => setImageStyle(event.target.value)}
+            aria-label="Drawing style"
+          >
+            <option value="general">General</option>
+            <option value="anime">Anime</option>
+            <option value="cinematic">Cinematic</option>
+            <option value="portrait">Portrait</option>
+            <option value="concept">Concept art</option>
+          </select>
 
           <label className="srOnly" htmlFor="imagePrompt">
             Image prompt
@@ -407,17 +468,55 @@ function App() {
             onChange={(event) => setNegativePrompt(event.target.value)}
           />
 
+          <div className="imageControls">
+            <label>
+              <span>Steps</span>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={imageSteps}
+                onChange={(event) => setImageSteps(event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Scale</span>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                step="0.5"
+                value={imageScale}
+                onChange={(event) => setImageScale(event.target.value)}
+              />
+            </label>
+          </div>
+
           <button type="submit" disabled={isGeneratingImage || !imagePrompt.trim()}>
             {isGeneratingImage ? 'Generating' : 'Generate'}
           </button>
 
-          {generatedImage?.image ? (
-            <figure className="generatedPreview">
-              <img src={generatedImage.image} alt={imagePrompt || 'Generated NovelAI result'} />
-              <figcaption>
-                {generatedImage.width} x {generatedImage.height} - seed {generatedImage.seed}
-              </figcaption>
-            </figure>
+          {generatedImages.length ? (
+            <div className="generatedHistory" aria-label="Generated drawings">
+              {generatedImages.map((image) => (
+                <figure className="generatedPreview" key={image.id || image.seed}>
+                  <img src={image.image} alt={image.prompt || 'Generated AI drawing'} />
+                  <figcaption>
+                    <span>
+                      {image.width} x {image.height} - seed {image.seed}
+                    </span>
+                    <div className="generatedActions">
+                      <button type="button" onClick={() => attachGeneratedImage(image)}>
+                        Attach
+                      </button>
+                      <button type="button" onClick={() => downloadGeneratedImage(image)}>
+                        Save
+                      </button>
+                    </div>
+                  </figcaption>
+                </figure>
+              ))}
+            </div>
           ) : null}
         </form>
 
@@ -560,6 +659,20 @@ function loadSessions() {
 
 function loadActiveSessionId() {
   return localStorage.getItem(ACTIVE_SESSION_KEY) || ''
+}
+
+function loadImageHistory() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(IMAGE_HISTORY_KEY) || '[]')
+    if (!Array.isArray(saved)) return []
+
+    return saved
+      .filter((image) => image && typeof image.image === 'string' && image.image.startsWith('data:image/'))
+      .slice(0, 8)
+  } catch {
+    localStorage.removeItem(IMAGE_HISTORY_KEY)
+    return []
+  }
 }
 
 function createDefaultSession() {
@@ -727,7 +840,8 @@ function readAsText(file) {
 }
 
 function toWebSocketUrl(url) {
-  return url.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
+  const absoluteUrl = url.startsWith('http') ? url : new URL(url, window.location.origin).toString()
+  return absoluteUrl.replace(/^https:/, 'wss:').replace(/^http:/, 'ws:')
 }
 
 export default App

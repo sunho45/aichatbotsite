@@ -164,7 +164,8 @@ h2 {
   font-weight: 800;
 }
 
-.imageToolHeader select {
+.imageToolHeader select,
+.imageSelect {
   min-width: 118px;
   height: 34px;
   border: 1px solid var(--panel-border);
@@ -173,6 +174,10 @@ h2 {
   background: #fff;
   color: var(--text);
   font-size: 0.82rem;
+}
+
+.imageSelect {
+  width: 100%;
 }
 
 .imagePrompt,
@@ -199,12 +204,40 @@ h2 {
 
 .imagePrompt:focus,
 .negativePrompt:focus,
-.imageToolHeader select:focus {
+.imageToolHeader select:focus,
+.imageSelect:focus,
+.imageControls input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(31, 122, 90, 0.16);
 }
 
-.imageTool button {
+.imageControls {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.imageControls label {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.imageControls input {
+  width: 100%;
+  height: 36px;
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--text);
+  background: #fff;
+  outline: none;
+}
+
+.imageTool > button {
   height: 42px;
   border: 0;
   border-radius: 8px;
@@ -214,13 +247,22 @@ h2 {
   cursor: pointer;
 }
 
-.imageTool button:hover {
+.imageTool > button:hover,
+.generatedActions button:hover {
   background: var(--accent-strong);
 }
 
-.imageTool button:disabled {
+.imageTool > button:disabled {
   cursor: wait;
   opacity: 0.7;
+}
+
+.generatedHistory {
+  max-height: 300px;
+  overflow-y: auto;
+  display: grid;
+  gap: 10px;
+  padding-right: 2px;
 }
 
 .generatedPreview {
@@ -239,8 +281,28 @@ h2 {
 }
 
 .generatedPreview figcaption {
+  display: grid;
+  gap: 7px;
   color: var(--muted);
   font-size: 0.78rem;
+}
+
+.generatedActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.generatedActions button {
+  min-width: 0;
+  height: 34px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 800;
+  cursor: pointer;
 }
 
 .sessionHeader {
