@@ -4,7 +4,6 @@ const path = require("path");
 // Loads server/.env once, builds shared filesystem paths, and exposes provider
 // settings used by routes, services, and middleware across the server.
 require("dotenv").config({ path: path.resolve(__dirname, "..", ".env"), quiet: true });
-require("dotenv").config({path:path.resolve(__dirname,"..",".env")})
 const serverRoot = path.resolve(__dirname, "..");
 const clientDist = path.resolve(serverRoot, "..", "client", "vite_project", "dist");
 
