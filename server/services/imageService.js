@@ -237,6 +237,7 @@ function buildNovelAiRequestBody({
     model,
     action: "generate",
     parameters: {
+      params_version: 3,
       width,
       height,
       scale,
@@ -247,8 +248,42 @@ function buildNovelAiRequestBody({
       uc: negativePrompt.slice(0, 1200),
       ucPreset: 0,
       qualityToggle: true,
+      cfg_rescale: 0,
       noise_schedule: noiseSchedule,
+      v4_prompt: buildV4Prompt(prompt),
+      v4_negative_prompt: buildV4NegativePrompt(negativePrompt),
+      dynamic_thresholding: false,
+      sm: false,
+      sm_dyn: false,
+      controlnet_strength: 1,
+      controlnet_model: null,
+      deliberate_euler_ancestral_bug: false,
+      prefer_brownian: true,
     },
+  };
+}
+
+function buildV4Prompt(prompt) {
+  return {
+    caption: {
+      base_caption: prompt.slice(0, 1200),
+      char_captions: [],
+    },
+    use_coords: false,
+    use_order: true,
+    legacy_uc: false,
+  };
+}
+
+function buildV4NegativePrompt(negativePrompt) {
+  return {
+    caption: {
+      base_caption: negativePrompt.slice(0, 1200),
+      char_captions: [],
+    },
+    use_coords: false,
+    use_order: false,
+    legacy_uc: false,
   };
 }
 
@@ -297,6 +332,10 @@ function getRetryModel(model) {
 function formatNovelAiError(message, model, status) {
   if (/model must be a valid enum value/i.test(message || "")) {
     return `The image API rejected model "${model}". The V4.5 model name is valid for NovelAI, so check Render env: NOVELAI_BASE_URL must be https://image.novelai.net, NOVELAI_IMAGE_ENDPOINT must be /ai/generate-image, and NOVELAI_IMAGE_MODEL should be nai-diffusion-4-5-full or nai-diffusion-4-5-curated. If you are using a third-party NovelAI proxy, use that proxy's model enum instead.`;
+  }
+
+  if (status >= 500) {
+    return `NovelAI returned ${status} for model "${model}". The request now uses the V4.5 structured prompt format; if this continues, try a shorter prompt or switch NOVELAI_IMAGE_MODEL between nai-diffusion-4-5-full and nai-diffusion-4-5-curated. Provider message: ${message || "Internal Server Error"}`;
   }
 
   return message || `NovelAI request failed with ${status}`;
