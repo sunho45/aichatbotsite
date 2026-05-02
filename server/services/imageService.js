@@ -15,11 +15,10 @@ const DEFAULT_NEGATIVE_PROMPT =
 
 async function generateNovelAiImage(payload) {
   if (!NOVELAI_API_KEY) {
-  
     return {
       ok: false,
       status: 500,
-      error: NOVELAI_API_KEY,
+      error: "Missing NOVELAI_API_KEY. Add it to server/.env or the Render environment variables, then restart the server.",
     };
   }
 
@@ -78,7 +77,7 @@ async function generateNovelAiImage(payload) {
       },
     }),
   }).catch((error) => {
-    console.error(error);
+    console.error("NovelAI request failed:", error);
     return null;
   });
 
