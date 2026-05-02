@@ -19,7 +19,7 @@ async function generateNovelAiImage(payload) {
     return {
       ok: false,
       status: 500,
-      error: "Missing NOVELAI_API_KEY. Add it to server/.env, then restart the server.",
+      error: NOVELAI_API_KEY,
     };
   }
 
