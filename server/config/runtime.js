@@ -18,7 +18,7 @@ const OPENROUTER_BASE_URL =
 const OPENROUTER_SITE_URL =
   process.env.OPENROUTER_SITE_URL ||
   process.env.CLIENT_ORIGIN ||
-  "https://aichatbotsite.onrender.com";
+  "https://aichatbotsite-1.onrender.com";
 const OPENROUTER_APP_NAME = process.env.OPENROUTER_APP_NAME || "My AI Website";
 
 const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;

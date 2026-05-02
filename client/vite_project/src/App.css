@@ -257,6 +257,17 @@ h2 {
   opacity: 0.7;
 }
 
+.imageStatus {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: var(--assistant);
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .generatedHistory {
   max-height: 300px;
   overflow-y: auto;

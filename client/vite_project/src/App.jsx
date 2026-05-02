@@ -32,6 +32,7 @@ function App() {
   const [imageStyle, setImageStyle] = useState('general')
   const [imageSteps, setImageSteps] = useState(28)
   const [imageScale, setImageScale] = useState(5)
+  const [imageStatus, setImageStatus] = useState('')
   const [isGeneratingImage, setIsGeneratingImage] = useState(false)
   const [generatedImages, setGeneratedImages] = useState(loadImageHistory)
   const [attachments, setAttachments] = useState([])
@@ -330,7 +331,7 @@ function App() {
     const [width, height] = imageSize.split('x').map(Number)
     const styledPrompt = [content, IMAGE_STYLES[imageStyle]].filter(Boolean).join(', ')
     setIsGeneratingImage(true)
-    setStatus('Generating image with NovelAI...')
+    setImageStatus('Generating image with NovelAI...')
 
     try {
       const response = await fetch(`${API_URL}/api/image`, {
@@ -346,9 +347,10 @@ function App() {
         }),
       })
 
-      const data = await response.json().catch(() => ({}))
+      const responseText = await response.text()
+      const data = parseJson(responseText)
       if (!response.ok) {
-        throw new Error(data.error || 'Image generation failed')
+        throw new Error(data.error || responseText || 'Image generation failed')
       }
 
       const nextImage = {
@@ -359,9 +361,9 @@ function App() {
         createdAt: Date.now(),
       }
       setGeneratedImages((current) => [nextImage, ...current].slice(0, 8))
-      setStatus('')
+      setImageStatus('')
     } catch (error) {
-      setStatus(error.message)
+      setImageStatus(error.message)
     } finally {
       setIsGeneratingImage(false)
     }
@@ -377,7 +379,7 @@ function App() {
     }
 
     setAttachments((current) => [attachment, ...current].slice(0, 6))
-    setStatus('Generated image added to the next chat message.')
+    setImageStatus('Generated image added to the next chat message.')
   }
 
   function downloadGeneratedImage(image) {
@@ -495,6 +497,8 @@ function App() {
           <button type="submit" disabled={isGeneratingImage || !imagePrompt.trim()}>
             {isGeneratingImage ? 'Generating' : 'Generate'}
           </button>
+
+          {imageStatus ? <div className="imageStatus">{imageStatus}</div> : null}
 
           {generatedImages.length ? (
             <div className="generatedHistory" aria-label="Generated drawings">
@@ -837,6 +841,14 @@ function readAsText(file) {
     reader.onerror = reject
     reader.readAsText(file)
   })
+}
+
+function parseJson(text) {
+  try {
+    return JSON.parse(text || '{}')
+  } catch {
+    return {}
+  }
 }
 
 function toWebSocketUrl(url) {

@@ -8,7 +8,7 @@ const list=[
 
 ]
 
-const newlist=list.filter((item)=>{return item.price===2400;}).splice(0,1).map((item)=>{return{...item, price:item.price*2}});
+
 
 
 
