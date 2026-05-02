@@ -32,7 +32,7 @@ const ELEVENLABS_OUTPUT_FORMAT =
 const NOVELAI_API_KEY = process.env.NOVELAI_API_KEY;
 const NOVELAI_BASE_URL = process.env.NOVELAI_BASE_URL || "https://image.novelai.net";
 const NOVELAI_IMAGE_MODEL =
-  process.env.NOVELAI_IMAGE_MODEL || "nai-diffusion-4-5-curated";
+  process.env.NOVELAI_IMAGE_MODEL || "nai-diffusion-4-5-full";
 const NOVELAI_IMAGE_ENDPOINT =
   process.env.NOVELAI_IMAGE_ENDPOINT || "/ai/generate-image";
 

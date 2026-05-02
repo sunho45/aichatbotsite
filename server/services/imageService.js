@@ -12,6 +12,13 @@ const {
 
 const DEFAULT_NEGATIVE_PROMPT =
   "lowres, bad anatomy, bad hands, text, error, missing fingers, extra digit, fewer digits, cropped, worst quality, low quality, jpeg artifacts";
+const DEFAULT_IMAGE_MODEL = "nai-diffusion-4-5-full";
+const MODEL_ALIASES = new Map([
+  ["nai-diffusion-4.5-full", "nai-diffusion-4-5-full"],
+  ["nai-diffusion-4.5-curated", "nai-diffusion-4-5-curated"],
+  ["nai-diffusion-4-5-full", "nai-diffusion-4-5-full"],
+  ["nai-diffusion-4-5-curated", "nai-diffusion-4-5-curated"],
+]);
 
 async function generateNovelAiImage(payload) {
   if (!NOVELAI_API_KEY) {
@@ -44,6 +51,7 @@ async function generateNovelAiImage(payload) {
     typeof payload?.noiseSchedule === "string" && payload.noiseSchedule.trim()
       ? payload.noiseSchedule.trim()
       : "karras";
+  const model = normalizeNovelAiModel(NOVELAI_IMAGE_MODEL);
 
   const response = await fetch(`${NOVELAI_BASE_URL}${NOVELAI_IMAGE_ENDPOINT}`, {
     method: "POST",
@@ -53,7 +61,7 @@ async function generateNovelAiImage(payload) {
     },
     body: JSON.stringify({
       input: prompt.slice(0, 1200),
-      model: NOVELAI_IMAGE_MODEL,
+      model,
       action: "generate",
       parameters: {
         width,
@@ -96,12 +104,13 @@ async function generateNovelAiImage(payload) {
     console.error("NovelAI image request rejected:", {
       status: response.status,
       message: providerMessage,
+      model,
     });
 
     return {
       ok: false,
       status: response.status,
-      error: providerMessage || `NovelAI request failed with ${response.status}`,
+      error: formatNovelAiError(providerMessage, model, response.status),
     };
   }
 
@@ -126,7 +135,7 @@ async function generateNovelAiImage(payload) {
     ok: true,
     data: {
       image: `data:${image.contentType};base64,${image.buffer.toString("base64")}`,
-      model: NOVELAI_IMAGE_MODEL,
+      model,
       seed,
       width,
       height,
@@ -223,6 +232,19 @@ function extractProviderError(details) {
   } catch {
     return details.slice(0, 500);
   }
+}
+
+function normalizeNovelAiModel(value) {
+  const model = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return MODEL_ALIASES.get(model) || DEFAULT_IMAGE_MODEL;
+}
+
+function formatNovelAiError(message, model, status) {
+  if (/model must be a valid enum value/i.test(message || "")) {
+    return `NovelAI rejected the image model "${model}". Use NOVELAI_IMAGE_MODEL=nai-diffusion-4-5-full or nai-diffusion-4-5-curated in Render, then redeploy.`;
+  }
+
+  return message || `NovelAI request failed with ${status}`;
 }
 
 module.exports = { generateNovelAiImage };
