@@ -91,10 +91,17 @@ async function generateNovelAiImage(payload) {
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
+    const providerMessage = extractProviderError(details);
+
+    console.error("NovelAI image request rejected:", {
+      status: response.status,
+      message: providerMessage,
+    });
+
     return {
       ok: false,
       status: response.status,
-      error: details || `NovelAI request failed with ${response.status}`,
+      error: providerMessage || `NovelAI request failed with ${response.status}`,
     };
   }
 
@@ -199,6 +206,23 @@ function getImageContentType(fileName) {
   if (/\.jpe?g$/i.test(fileName)) return "image/jpeg";
   if (/\.webp$/i.test(fileName)) return "image/webp";
   return "image/png";
+}
+
+function extractProviderError(details) {
+  if (!details) return "";
+
+  try {
+    const data = JSON.parse(details);
+    return (
+      data.error?.message ||
+      data.error ||
+      data.message ||
+      data.statusMessage ||
+      ""
+    );
+  } catch {
+    return details.slice(0, 500);
+  }
 }
 
 module.exports = { generateNovelAiImage };
