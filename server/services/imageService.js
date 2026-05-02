@@ -52,42 +52,43 @@ async function generateNovelAiImage(payload) {
       ? payload.noiseSchedule.trim()
       : "karras";
   const model = normalizeNovelAiModel(NOVELAI_IMAGE_MODEL);
-
-  const response = await fetch(`${NOVELAI_BASE_URL}${NOVELAI_IMAGE_ENDPOINT}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${NOVELAI_API_KEY}`,
-    },
-    body: JSON.stringify({
-      input: prompt.slice(0, 1200),
-      model,
-      action: "generate",
-      parameters: {
-        width,
-        height,
-        scale,
-        sampler,
-        steps,
-        seed,
-        n_samples: 1,
-        uc: negativePrompt.slice(0, 1200),
-        ucPreset: 0,
-        qualityToggle: true,
-        sm: false,
-        sm_dyn: false,
-        dynamic_thresholding: false,
-        controlnet_strength: 1,
-        legacy: false,
-        add_original_image: false,
-        cfg_rescale: 0,
-        noise_schedule: noiseSchedule,
-      },
-    }),
-  }).catch((error) => {
-    console.error("NovelAI request failed:", error);
-    return null;
+  const requestBody = buildNovelAiRequestBody({
+    prompt,
+    negativePrompt,
+    width,
+    height,
+    scale,
+    sampler,
+    steps,
+    seed,
+    noiseSchedule,
+    model,
   });
+
+  let responseModel = model;
+  let response = await sendNovelAiRequest(requestBody);
+
+  if (!response) {
+    return {
+      ok: false,
+      status: 502,
+      error: "Could not connect to NovelAI. Check network access and server logs.",
+    };
+  }
+
+  if (!response.ok) {
+    const retryModel = getRetryModel(model);
+    if (response.status >= 500 && retryModel) {
+      const retryBody = { ...requestBody, model: retryModel };
+      console.error("NovelAI image request failed; retrying with fallback model:", {
+        status: response.status,
+        model,
+        retryModel,
+      });
+      response = await sendNovelAiRequest(retryBody);
+      responseModel = retryModel;
+    }
+  }
 
   if (!response) {
     return {
@@ -104,13 +105,15 @@ async function generateNovelAiImage(payload) {
     console.error("NovelAI image request rejected:", {
       status: response.status,
       message: providerMessage,
-      model,
+      model: responseModel,
+      baseUrl: NOVELAI_BASE_URL,
+      endpoint: NOVELAI_IMAGE_ENDPOINT,
     });
 
     return {
       ok: false,
       status: response.status,
-      error: formatNovelAiError(providerMessage, model, response.status),
+      error: formatNovelAiError(providerMessage, responseModel, response.status),
     };
   }
 
@@ -135,7 +138,7 @@ async function generateNovelAiImage(payload) {
     ok: true,
     data: {
       image: `data:${image.contentType};base64,${image.buffer.toString("base64")}`,
-      model,
+      model: responseModel,
       seed,
       width,
       height,
@@ -217,6 +220,52 @@ function getImageContentType(fileName) {
   return "image/png";
 }
 
+function buildNovelAiRequestBody({
+  prompt,
+  negativePrompt,
+  width,
+  height,
+  scale,
+  sampler,
+  steps,
+  seed,
+  noiseSchedule,
+  model,
+}) {
+  return {
+    input: prompt.slice(0, 1200),
+    model,
+    action: "generate",
+    parameters: {
+      width,
+      height,
+      scale,
+      sampler,
+      steps,
+      seed,
+      n_samples: 1,
+      uc: negativePrompt.slice(0, 1200),
+      ucPreset: 0,
+      qualityToggle: true,
+      noise_schedule: noiseSchedule,
+    },
+  };
+}
+
+function sendNovelAiRequest(body) {
+  return fetch(`${NOVELAI_BASE_URL}${NOVELAI_IMAGE_ENDPOINT}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${NOVELAI_API_KEY}`,
+    },
+    body: JSON.stringify(body),
+  }).catch((error) => {
+    console.error("NovelAI request failed:", error);
+    return null;
+  });
+}
+
 function extractProviderError(details) {
   if (!details) return "";
 
@@ -239,9 +288,15 @@ function normalizeNovelAiModel(value) {
   return MODEL_ALIASES.get(model) || DEFAULT_IMAGE_MODEL;
 }
 
+function getRetryModel(model) {
+  if (model === "nai-diffusion-4-5-full") return "nai-diffusion-4-5-curated";
+  if (model === "nai-diffusion-4-5-curated") return "nai-diffusion-4-5-full";
+  return "";
+}
+
 function formatNovelAiError(message, model, status) {
   if (/model must be a valid enum value/i.test(message || "")) {
-    return `NovelAI rejected the image model "${model}". Use NOVELAI_IMAGE_MODEL=nai-diffusion-4-5-full or nai-diffusion-4-5-curated in Render, then redeploy.`;
+    return `The image API rejected model "${model}". The V4.5 model name is valid for NovelAI, so check Render env: NOVELAI_BASE_URL must be https://image.novelai.net, NOVELAI_IMAGE_ENDPOINT must be /ai/generate-image, and NOVELAI_IMAGE_MODEL should be nai-diffusion-4-5-full or nai-diffusion-4-5-curated. If you are using a third-party NovelAI proxy, use that proxy's model enum instead.`;
   }
 
   return message || `NovelAI request failed with ${status}`;
