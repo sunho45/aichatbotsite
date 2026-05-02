@@ -119,12 +119,7 @@ async function generateNovelAiImage(payload) {
 
   const contentType = response.headers.get("content-type") || "";
   const body = Buffer.from(await response.arrayBuffer());
-  const image = contentType.includes("application/zip")
-    ? extractFirstImageFromZip(body)
-    : {
-        buffer: body,
-        contentType: contentType.startsWith("image/") ? contentType : "image/png",
-      };
+  const image = normalizeImageResponse(body, contentType);
 
   if (!image) {
     return {
@@ -159,6 +154,21 @@ function normalizeSeed(value) {
   }
 
   return Math.floor(Math.random() * 4294967295);
+}
+
+function normalizeImageResponse(buffer, contentType) {
+  if (isZipBuffer(buffer) || contentType.toLowerCase().includes("zip")) {
+    return extractFirstImageFromZip(buffer);
+  }
+
+  return {
+    buffer,
+    contentType: contentType.startsWith("image/") ? contentType : "image/png",
+  };
+}
+
+function isZipBuffer(buffer) {
+  return buffer.length >= 4 && buffer.readUInt32LE(0) === 0x04034b50;
 }
 
 function extractFirstImageFromZip(buffer) {

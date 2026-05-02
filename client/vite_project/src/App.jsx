@@ -77,13 +77,37 @@ function App() {
 
     const userMessage = createUserMessage(content, attachments)
     const nextMessages = [...messages, userMessage]
+    const imageCommandPrompt = !attachments.length ? getImageCommandPrompt(content) : ''
     updateActiveSession(nextMessages)
     setPrompt('')
     setAttachments([])
-    setStatus('Thinking...')
+    setStatus(imageCommandPrompt ? 'Generating image...' : 'Thinking...')
     setIsSending(true)
 
     try {
+      if (imageCommandPrompt) {
+        const data = await requestImageGeneration({
+          prompt: imageCommandPrompt,
+          negativePrompt,
+          size: imageSize,
+          style: imageStyle,
+          steps: imageSteps,
+          scale: imageScale,
+        })
+        const nextImage = createGeneratedImage(data, imageCommandPrompt, imageStyle)
+        setGeneratedImages((current) => [nextImage, ...current].slice(0, 8))
+        updateActiveSession([
+          ...nextMessages,
+          {
+            role: 'assistant',
+            content: `Generated image: ${imageCommandPrompt}`,
+            generatedImage: nextImage,
+          },
+        ])
+        setStatus('')
+        return
+      }
+
       const data = await sendChatOverWebSocket(nextMessages)
       const finalMessages = [...nextMessages, { role: 'assistant', content: data.reply }]
       updateActiveSession(finalMessages)
@@ -328,38 +352,19 @@ function App() {
     const content = imagePrompt.trim()
     if (!content || isGeneratingImage) return
 
-    const [width, height] = imageSize.split('x').map(Number)
-    const styledPrompt = [content, IMAGE_STYLES[imageStyle]].filter(Boolean).join(', ')
     setIsGeneratingImage(true)
     setImageStatus('Generating image with NovelAI...')
 
     try {
-      const response = await fetch(`${API_URL}/api/image`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: styledPrompt,
-          negativePrompt,
-          width,
-          height,
-          steps: imageSteps,
-          scale: imageScale,
-        }),
-      })
-
-      const responseText = await response.text()
-      const data = parseJson(responseText)
-      if (!response.ok) {
-        throw new Error(data.error || responseText || 'Image generation failed')
-      }
-
-      const nextImage = {
-        ...data,
-        id: createId(),
+      const data = await requestImageGeneration({
         prompt: content,
+        negativePrompt,
+        size: imageSize,
         style: imageStyle,
-        createdAt: Date.now(),
-      }
+        steps: imageSteps,
+        scale: imageScale,
+      })
+      const nextImage = createGeneratedImage(data, content, imageStyle)
       setGeneratedImages((current) => [nextImage, ...current].slice(0, 8))
       setImageStatus('')
     } catch (error) {
@@ -637,6 +642,18 @@ function MessageBubble({ message, profileImage }) {
       ) : null}
       <div className={`message ${message.role}`}>
         <span>{text}</span>
+        {message.generatedImage ? (
+          <figure className="messageGeneratedImage">
+            <img
+              src={message.generatedImage.image}
+              alt={message.generatedImage.prompt || 'Generated AI drawing'}
+            />
+            <figcaption>
+              {message.generatedImage.width} x {message.generatedImage.height} - seed{' '}
+              {message.generatedImage.seed}
+            </figcaption>
+          </figure>
+        ) : null}
         {Array.isArray(message.attachments) && message.attachments.length ? (
           <div className="messageAttachments">
             {message.attachments.map((attachment, index) => (
@@ -710,6 +727,19 @@ function normalizeSessions(value) {
               ['user', 'assistant'].includes(message.role) &&
               (typeof message.content === 'string' || Array.isArray(message.content))
             )
+          })
+          .map((message) => {
+            if (
+              message.generatedImage &&
+              typeof message.generatedImage.image === 'string' &&
+              message.generatedImage.image.startsWith('data:image/')
+            ) {
+              return message
+            }
+
+            const rest = { ...message }
+            delete rest.generatedImage
+            return rest
           })
         : createDefaultSession().messages
 
@@ -841,6 +871,62 @@ function readAsText(file) {
     reader.onerror = reject
     reader.readAsText(file)
   })
+}
+
+async function requestImageGeneration({ prompt, negativePrompt, size, style, steps, scale }) {
+  const [width, height] = size.split('x').map(Number)
+  const styledPrompt = [prompt, IMAGE_STYLES[style]].filter(Boolean).join(', ')
+  const response = await fetch(`${API_URL}/api/image`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      prompt: styledPrompt,
+      negativePrompt,
+      width,
+      height,
+      steps,
+      scale,
+    }),
+  })
+
+  const responseText = await response.text()
+  const data = parseJson(responseText)
+  if (!response.ok) {
+    throw new Error(data.error || responseText || 'Image generation failed')
+  }
+
+  return data
+}
+
+function createGeneratedImage(data, prompt, style) {
+  return {
+    ...data,
+    id: createId(),
+    prompt,
+    style,
+    createdAt: Date.now(),
+  }
+}
+
+function getImageCommandPrompt(text) {
+  const content = text.trim()
+  if (!content) return ''
+
+  const commandPatterns = [
+    /^\/(?:image|draw|그림|이미지)\s+(.+)$/i,
+    /^(?:그림|이미지|사진|일러스트)(?:을|를)?\s*(?:그려줘|그려|만들어줘|만들어|생성해줘|생성)\s*[:：]?\s*(.+)$/i,
+    /^(.+?)\s*(?:그림|이미지|사진|일러스트)(?:을|를)?\s*(?:그려줘|그려|만들어줘|만들어|생성해줘|생성)$/i,
+    /^(?:draw|generate|create|make)\s+(?:an?\s+)?(?:image|picture|drawing|illustration)\s+(?:of\s+)?(.+)$/i,
+    /^(?:draw|generate|create|make)\s+(.+)$/i,
+  ]
+
+  for (const pattern of commandPatterns) {
+    const match = content.match(pattern)
+    const prompt = match?.[1]?.trim()
+    if (prompt) return prompt
+  }
+
+  return ''
 }
 
 function parseJson(text) {
