@@ -15,6 +15,7 @@ const DEFAULT_NEGATIVE_PROMPT =
 
 async function generateNovelAiImage(payload) {
   if (!NOVELAI_API_KEY) {
+  
     return {
       ok: false,
       status: 500,
