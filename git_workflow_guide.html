@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        @page {
+            size: A4;
+            margin: 15mm 12mm;
+            background-color: #f4f7f9;
+        }
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24pt;
+        }
+        .header p {
+            margin: 10px 0 0 0;
+            font-size: 11pt;
+            opacity: 0.9;
+        }
+        .container {
+            background-color: white;
+            padding: 25px;
+            border-radius: 0 0 8px 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h2 {
+            color: #2980b9;
+            border-left: 5px solid #2980b9;
+            padding-left: 12px;
+            font-size: 16pt;
+            margin-top: 30px;
+            page-break-after: avoid;
+        }
+        h3 {
+            color: #2c3e50;
+            font-size: 13pt;
+            margin-top: 20px;
+            page-break-after: avoid;
+        }
+        .command-box {
+            background-color: #2d3436;
+            color: #dfe6e9;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 10pt;
+            margin: 10px 0;
+            white-space: pre-wrap;
+        }
+        .workflow-step {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #e1e4e8;
+            border-radius: 8px;
+            background-color: #fafbfc;
+        }
+        .step-number {
+            display: inline-block;
+            background-color: #2980b9;
+            color: white;
+            width: 24px;
+            height: 24px;
+            text-align: center;
+            line-height: 24px;
+            border-radius: 50%;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th, td {
+            border: 1px solid #dcdde1;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background-color: #f1f2f6;
+            color: #2c3e50;
+        }
+        .math {
+            font-family: 'Times New Roman', serif;
+            font-style: italic;
+            font-weight: bold;
+            color: #e67e22;
+        }
+        .tip {
+            background-color: #fff3cd;
+            border-left: 5px solid #ffc107;
+            padding: 10px 15px;
+            margin: 20px 0;
+            font-size: 10pt;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Git Workflow & Basic Commands</h1>
+        <p>효율적인 협업과 깔끔한 히스토리 관리를 위한 가이드</p>
+    </div>
+
+    <div class="container">
+        <h2>1. 기초 Git 명령어 (Essentials)</h2>
+        <p>프로젝트 시작부터 커밋, 푸시까지 가장 자주 사용되는 기본 명령어 세트입니다.</p>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>명령어</th>
+                    <th>설명</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>git init</code></td>
+                    <td>현재 디렉토리를 로컬 Git 저장소로 설정</td>
+                </tr>
+                <tr>
+                    <td><code>git clone [url]</code></td>
+                    <td>원격 저장소의 내용을 내 컴퓨터로 복제</td>
+                </tr>
+                <tr>
+                    <td><code>git status</code></td>
+                    <td>파일의 변경 상태(추적 여부, 수정 등) 확인</td>
+                </tr>
+                <tr>
+                    <td><code>git add [file]</code></td>
+                    <td>변경 사항을 Staging Area에 추가 (. 입력 시 전체 추가)</td>
+                </tr>
+                <tr>
+                    <td><code>git commit -m "msg"</code></td>
+                    <td>Staging Area의 파일을 로컬 저장소에 기록</td>
+                </tr>
+                <tr>
+                    <td><code>git push origin [name]</code></td>
+                    <td>로컬 커밋을 원격 저장소에 업로드</td>
+                </tr>
+                <tr>
+                    <td><code>git pull origin [name]</code></td>
+                    <td>원격 저장소의 최신 내용을 가져와 현재 브런치에 병합</td>
+                </tr>
+                <tr>
+                    <td><code>git switch [name]</code></td>
+                    <td>해당 브런치로 이동 (구 checkout 대체)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2>2. 깔끔한 병합 워크플로우: Rebase & Merge</h2>
+        <p>단순 병합보다 히스토리를 일직선으로 유지할 수 있는 권장 워크플로우입니다.</p>
+
+        <div class="workflow-step">
+            <h3><span class="step-number">1</span> 로컬 최신화</h3>
+            <p>병합 전, 원격의 최신 상태를 확인합니다.</p>
+            <div class="command-box">git fetch origin</div>
+        </div>
+
+        <div class="workflow-step">
+            <h3><span class="step-number">2</span> 내 작업 브런치(test) 정렬</h3>
+            <p>내 작업 내역을 <code>dev</code> 브런치의 최신 커밋 뒤로 옮겨 붙입니다.</p>
+            <div class="command-box">git switch test
+git rebase dev</div>
+            <p style="font-size: 9pt; color: #666;">* 충돌 발생 시 수정 후: <code>git add .</code> -> <code>git rebase --continue</code></p>
+        </div>
+
+        <div class="workflow-step">
+            <h3><span class="step-number">3</span> 메인 브런치(dev)로 합치기</h3>
+            <p>정렬된 <code>test</code>의 내용을 <code>dev</code>로 흡수합니다. (Fast-forward)</p>
+            <div class="command-box">git switch dev
+git merge test</div>
+        </div>
+
+        <div class="workflow-step">
+            <h3><span class="step-number">4</span> 결과 반영 및 업로드</h3>
+            <p>완성된 최종 <code>dev</code> 상태를 원격에 올립니다.</p>
+            <div class="command-box">git push origin dev</div>
+        </div>
+
+        <div class="tip">
+            <strong>💡 Tip: Rebase 후 강제 푸시</strong><br>
+            Rebase는 히스토리를 재작성하므로, 이미 원격에 올린 브런치를 수정했다면 <code>git push origin test --force</code>가 필요할 수 있습니다. (단, 다른 사람과 공유하는 브런치라면 주의!)
+        </div>
+
+        <h2>3. 핵심 차이 요약</h2>
+        <ul>
+            <li><strong>Merge:</strong> 두 브런치를 합쳤다는 'Merge 커밋' 기록을 남기며 통합 (가지가 합쳐지는 모양).</li>
+            <li><strong>Rebase:</strong> 내 커밋들을 대상 브런치 끝으로 옮겨서, 마치 처음부터 그 지점에서 작업한 것처럼 '일직선 히스토리' 생성.</li>
+        </ul>
+
+        <p style="text-align: center; margin-top: 40px; font-size: 9pt; color: #95a5a6;">
+            &copy; 2026 Git Workflow Guide for Developers
+        </p>
+    </div>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Docker 가이드</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #20242a;
+      --muted: #5f6875;
+      --border: #d8dde5;
+      --accent: #1463ff;
+      --accent-soft: #eaf1ff;
+      --code: #111827;
+      --info: #0f766e;
+      --info-soft: #ecfeff;
+      --warning: #925400;
+      --warning-soft: #fff8e6;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, "Noto Sans KR", "Malgun Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.65;
+    }
+
+    header {
+      background: var(--panel);
+      border-bottom: 1px solid var(--border);
+      padding: 32px 24px;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px;
+    }
+
+    h1,
+    h2,
+    h3 {
+      line-height: 1.25;
+      margin: 0;
+    }
+
+    h1 {
+      max-width: 980px;
+      margin: 0 auto 8px;
+      font-size: 32px;
+    }
+
+    header p {
+      max-width: 980px;
+      margin: 0 auto;
+      color: var(--muted);
+    }
+
+    nav {
+      max-width: 980px;
+      margin: 18px auto 0;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    nav a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 8px 12px;
+      color: var(--accent);
+      background: var(--accent-soft);
+      border: 1px solid #c8dafd;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 700;
+    }
+
+    section {
+      margin: 0 0 18px;
+      padding: 22px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+    }
+
+    h2 {
+      margin-bottom: 12px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 18px 0 8px;
+      font-size: 17px;
+    }
+
+    p {
+      margin: 8px 0 12px;
+    }
+
+    ul,
+    ol {
+      margin: 8px 0 12px;
+      padding-left: 22px;
+    }
+
+    li {
+      margin: 6px 0;
+    }
+
+    code {
+      color: var(--code);
+      background: #eef1f5;
+      padding: 2px 5px;
+      border-radius: 4px;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    pre {
+      overflow-x: auto;
+      margin: 12px 0;
+      padding: 14px;
+      background: #111827;
+      color: #f9fafb;
+      border-radius: 8px;
+      line-height: 1.5;
+    }
+
+    pre code {
+      padding: 0;
+      background: transparent;
+      color: inherit;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      background: #ffffff;
+    }
+
+    th,
+    td {
+      border: 1px solid var(--border);
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f4f8;
+    }
+
+    .note {
+      padding: 12px;
+      border-left: 4px solid var(--info);
+      background: var(--info-soft);
+      border-radius: 6px;
+    }
+
+    .warning {
+      padding: 12px;
+      border-left: 4px solid var(--warning);
+      background: var(--warning-soft);
+      border-radius: 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Docker 가이드</h1>
+    <p>이미지, 컨테이너, 포트, 볼륨, Docker Compose 실습까지 한글로 정리한 문서입니다.</p>
+    <nav aria-label="guide links">
+      <a href="git.html">Git 가이드</a>
+      <a href="javascript.html">JavaScript 문법 가이드</a>
+      <a href="nginx.html">Nginx 가이드</a>
+      <a href="docker.html">Docker 가이드</a>
+      <a href="docker-compose.html">Docker Compose 가이드</a>
+    </nav>
+  </header>
+
+  <main>
+    <section>
+      <h2>Docker란?</h2>
+      <p>Docker는 애플리케이션과 실행 환경을 컨테이너라는 단위로 묶어서 실행하는 도구입니다. 내 컴퓨터, 테스트 서버, 운영 서버에서 같은 방식으로 실행할 수 있게 해줍니다.</p>
+      <ul>
+        <li><strong>이미지:</strong> 컨테이너를 만들기 위한 실행 템플릿입니다.</li>
+        <li><strong>컨테이너:</strong> 이미지를 실제로 실행한 프로세스입니다.</li>
+        <li><strong>Dockerfile:</strong> 이미지를 만드는 방법을 적어두는 파일입니다.</li>
+        <li><strong>볼륨:</strong> 컨테이너가 삭제되어도 데이터를 남기기 위한 저장 공간입니다.</li>
+        <li><strong>포트 매핑:</strong> 내 컴퓨터의 포트와 컨테이너 내부 포트를 연결하는 설정입니다.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>기본 명령어</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>명령어</th>
+            <th>설명</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>docker --version</code></td>
+            <td>Docker 버전을 확인합니다.</td>
+          </tr>
+          <tr>
+            <td><code>docker pull nginx</code></td>
+            <td>Docker Hub에서 Nginx 이미지를 내려받습니다.</td>
+          </tr>
+          <tr>
+            <td><code>docker images</code></td>
+            <td>내 컴퓨터에 내려받은 이미지 목록을 봅니다.</td>
+          </tr>
+          <tr>
+            <td><code>docker ps</code></td>
+            <td>실행 중인 컨테이너 목록을 봅니다.</td>
+          </tr>
+          <tr>
+            <td><code>docker ps -a</code></td>
+            <td>중지된 컨테이너까지 모두 봅니다.</td>
+          </tr>
+          <tr>
+            <td><code>docker logs 컨테이너명</code></td>
+            <td>컨테이너 로그를 확인합니다.</td>
+          </tr>
+          <tr>
+            <td><code>docker stop 컨테이너명</code></td>
+            <td>실행 중인 컨테이너를 중지합니다.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Docker Compose란?</h2>
+      <p>Docker Compose는 여러 컨테이너를 하나의 YAML 파일로 함께 실행하고 관리하는 도구입니다. 웹 서버, 데이터베이스, 관리자 도구처럼 서로 연결된 서비스를 한 번에 올릴 때 사용합니다.</p>
+      <p>기본 파일명이 <code>docker-compose.yml</code>이면 프로젝트 루트에서 아래 명령만 실행해도 Compose가 자동으로 파일을 찾아 실행합니다.</p>
+      <pre><code>docker compose up -d</code></pre>
+      <p><code>-d</code>는 detached 모드라는 뜻입니다. 터미널을 붙잡아두지 않고 백그라운드에서 컨테이너를 실행합니다.</p>
+    </section>
+
+    <section>
+      <h2>이번 실습 구성</h2>
+      <p>프로젝트 루트에 만든 <code>docker-compose.yml</code>은 세 개의 서비스를 실행합니다.</p>
+      <table>
+        <thead>
+          <tr>
+            <th>서비스</th>
+            <th>역할</th>
+            <th>접속</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>web</code></td>
+            <td>Nginx로 실습용 HTML 페이지를 보여줍니다.</td>
+            <td><code>http://localhost:8080</code></td>
+          </tr>
+          <tr>
+            <td><code>db</code></td>
+            <td>PostgreSQL 데이터베이스를 실행합니다.</td>
+            <td><code>localhost:5432</code></td>
+          </tr>
+          <tr>
+            <td><code>adminer</code></td>
+            <td>브라우저에서 DB를 확인하는 관리 도구입니다.</td>
+            <td><code>http://localhost:8081</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h3>실행하기</h3>
+      <pre><code>docker compose up -d</code></pre>
+
+      <h3>상태 확인하기</h3>
+      <pre><code>docker compose ps</code></pre>
+
+      <h3>로그 보기</h3>
+      <pre><code>docker compose logs web
+docker compose logs db
+docker compose logs adminer</code></pre>
+
+      <h3>중지하고 삭제하기</h3>
+      <pre><code>docker compose down</code></pre>
+
+      <h3>DB 데이터 볼륨까지 삭제하기</h3>
+      <pre><code>docker compose down -v</code></pre>
+
+      <div class="warning">
+        <strong>주의:</strong> <code>docker compose down -v</code>는 PostgreSQL 데이터가 들어 있는 볼륨까지 삭제합니다. DB 데이터를 남기고 싶으면 <code>-v</code>를 붙이지 않습니다.
+      </div>
+    </section>
+
+    <section>
+      <h2>Adminer 접속 정보</h2>
+      <p><code>http://localhost:8081</code>로 접속한 뒤 아래 값을 입력합니다.</p>
+      <table>
+        <tbody>
+          <tr>
+            <th>System</th>
+            <td><code>PostgreSQL</code></td>
+          </tr>
+          <tr>
+            <th>Server</th>
+            <td><code>db</code></td>
+          </tr>
+          <tr>
+            <th>Username</th>
+            <td><code>practice_user</code></td>
+          </tr>
+          <tr>
+            <th>Password</th>
+            <td><code>practice_password</code></td>
+          </tr>
+          <tr>
+            <th>Database</th>
+            <td><code>practice</code></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>여기서 <code>Server</code>를 <code>localhost</code>가 아니라 <code>db</code>로 쓰는 이유는 Compose 내부 네트워크에서 서비스 이름이 곧 호스트 이름처럼 동작하기 때문입니다.</p>
+    </section>
+
+    <section>
+      <h2>docker-compose.yml 핵심 구조</h2>
+      <pre><code>services:
+  web:
+    image: nginx:1.27-alpine
+    ports:
+      - "8080:80"
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: practice
+      POSTGRES_USER: practice_user
+      POSTGRES_PASSWORD: practice_password
+
+volumes:
+  compose-practice-db-data:</code></pre>
+      <ul>
+        <li><code>services</code>: 실행할 컨테이너 목록입니다.</li>
+        <li><code>image</code>: 사용할 Docker 이미지입니다.</li>
+        <li><code>ports</code>: 내 컴퓨터 포트와 컨테이너 포트를 연결합니다. 예를 들어 <code>"8080:80"</code>은 내 컴퓨터의 8080번을 컨테이너의 80번에 연결합니다.</li>
+        <li><code>environment</code>: 컨테이너에 전달할 환경변수입니다.</li>
+        <li><code>volumes</code>: 데이터나 파일을 컨테이너에 연결합니다.</li>
+        <li><code>depends_on</code>: 다른 서비스가 먼저 준비된 뒤 실행되도록 순서를 잡습니다.</li>
+        <li><code>healthcheck</code>: 컨테이너가 실제로 사용할 준비가 되었는지 검사합니다.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>DB에 직접 접속하기</h2>
+      <p>PostgreSQL 컨테이너 안으로 들어가 SQL을 직접 실행할 수 있습니다.</p>
+      <pre><code>docker compose exec db psql -U practice_user -d practice</code></pre>
+      <p>접속 후 아래 SQL을 실행해볼 수 있습니다.</p>
+      <pre><code>SELECT * FROM todos;
+INSERT INTO todos (title) VALUES ('Compose로 DB 데이터 추가하기');
+SELECT * FROM todos;</code></pre>
+      <p>나가려면 <code>\q</code>를 입력합니다.</p>
+    </section>
+
+    <section>
+      <h2>문제가 생겼을 때</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>상황</th>
+            <th>확인할 것</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>포트가 이미 사용 중이라고 나올 때</td>
+            <td><code>docker-compose.yml</code>의 <code>8080:80</code>, <code>8081:8080</code>, <code>5432:5432</code> 중 왼쪽 포트 번호를 다른 번호로 바꿉니다.</td>
+          </tr>
+          <tr>
+            <td>Docker API 권한 오류가 날 때</td>
+            <td>Docker Desktop이 실행 중인지 확인하고, 현재 터미널이 Docker에 접근할 권한이 있는지 확인합니다.</td>
+          </tr>
+          <tr>
+            <td>DB가 바로 접속되지 않을 때</td>
+            <td><code>docker compose ps</code>에서 <code>db</code> 상태가 <code>healthy</code>인지 확인합니다.</td>
+          </tr>
+          <tr>
+            <td>변경한 HTML이 안 보일 때</td>
+            <td><code>compose-practice/index.html</code>을 수정한 뒤 브라우저 새로고침을 합니다. 이 파일은 볼륨으로 nginx 컨테이너에 연결되어 있습니다.</td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="note">
+        <strong>정리:</strong> 지금 실습의 핵심은 <code>docker compose up -d</code> 한 번으로 웹, DB, DB 관리 도구를 같이 실행하고, <code>docker compose down</code>으로 한 번에 정리하는 흐름입니다.
+      </div>
+    </section>
+  </main>
+</body>
+</html>

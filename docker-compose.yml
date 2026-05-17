@@ -1,0 +1,45 @@
+services:
+  web:
+    image: nginx:1.27-alpine
+    container_name: compose-practice-web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./compose-practice/index.html:/usr/share/nginx/html/index.html:ro
+      - ./compose-practice/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    container_name: compose-practice-db
+    environment:
+      POSTGRES_DB: practice
+      POSTGRES_USER: practice_user
+      POSTGRES_PASSWORD: practice_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - compose-practice-db-data:/var/lib/postgresql/data
+      - ./compose-practice/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U practice_user -d practice"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  adminer:
+    image: adminer:4
+    container_name: compose-practice-adminer
+    ports:
+      - "8081:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  compose-practice-db-data:
